@@ -286,3 +286,11 @@ button { font: inherit; color: inherit; }
 .card.edit .btn.wide { margin-top: 6px; min-height: 42px; }
 .selbar { display: flex; gap: 8px; margin-bottom: 4px; }
 .selbar .btn { flex: 1; }
+
+/* copias que ya tienes (Pedidos) y saga */
+.bk .cvw { position: relative; display: block; width: 100%; max-width: 96px; }
+.bk .cvw .cover { max-width: 100%; display: block; }
+.bk .own { position: absolute; left: -6px; bottom: -6px; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 12px; background: #f6ecd9; color: #38211a; border: 2px solid #38211a; font: 800 13px/20px var(--sans, sans-serif); text-align: center; box-sizing: border-box; }
+.bk .own.zero { background: #e9b8a8; color: #7a2a1a; }
+.bk small.saga, .picker .slot small.saga { color: #a5682b; font-weight: 700; font-size: 10.5px; line-height: 1.15; }
+.picker .slot small.saga { color: #f0c987; font-size: 10px; text-align: center; }

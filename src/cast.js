@@ -288,7 +288,7 @@ export function openingLine(c) {
   if (c.type === 'unknownTitle') return `${intro} ${pick([`¿Tenéis «${c.unknown}»?`, `Vengo buscando «${c.unknown}».`, `Me lo recomendó una amiga: «${c.unknown}». ¿Lo tenéis?`, `¿Os queda «${c.unknown}»?`])}`.trim();
   if (c.type === 'unknownGenre') return `${intro} ${pick([`Busco algo de ${c.unknown}.`, `¿Tenéis libros de ${c.unknown}?`, `¿Tenéis una sección de ${c.unknown}?`])}`.trim();
   if (c.type === 'title') {
-    if (c.sequel) return `${intro} ${pick([`Acabo de terminar «${c.sequel}». ¿Tenéis la siguiente parte?`, `Me quedé con ganas después de «${c.sequel}». ¿Hay continuación?`, `¿Tenéis la segunda parte de «${c.sequel}»? No puedo esperar.`])}`.trim();
+    if (c.sequel) return `${intro} ${pick([`Acabo de terminar «${c.sequel}». ¿Tenéis la siguiente parte?`, `Me quedé con ganas después de «${c.sequel}». ¿Hay continuación?`, `¿Tenéis la continuación de «${c.sequel}»? No puedo esperar.`])}`.trim();
     return `${intro} ${pick([`¿Tenéis «${b.title}»?`, `Vengo buscando «${b.title}».`, `Me han hablado maravillas de «${b.title}».`, `Busco «${b.title}», de ${b.author}.`, `Un amigo no deja de hablarme de «${b.title}».`])}`.trim();
   }
   const info = c.type === 'tags' ? tagText(c.revealed) : '';

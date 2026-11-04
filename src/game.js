@@ -323,6 +323,19 @@ export function startDay(s) {
   const bag = [];
   s.queue = Array.from({ length: n }, () => randomRequest(s, bag));
   if (s.settings?.hard) s.queue.forEach((c) => { c.tries = 1; });
+  // Eventos (club de lectura, firma de autor): hace falta una sala donde recibir a la gente (hoy la Sala de lectura; luego la cafetería)
+  s.event = null; s.eventLast ??= -9;
+  if (eventsOn(s) && s.day - s.eventLast >= 4 && Math.random() < 0.5) {
+    const b = pick(availableBooks(s)), autor = Math.random() < 0.4, extra = autor ? 4 : 3;
+    s.event = autor ? { type: 'autor', bookId: b.id, who: b.author } : { type: 'club', bookId: b.id };
+    s.eventLast = s.day;
+    for (let i = 0; i < extra; i++) {
+      const c = newCustomer(pickChar(bag), b.id, 'title');
+      c.sequel = null; c.event = true;
+      c.line = autor ? `Vengo a la firma de ${b.author}. ¿Me vendéis «${b.title}» para que me lo dedique?` : `Somos del club de lectura de hoy. Nos toca «${b.title}». ¿Os queda algún ejemplar?`;
+      s.queue.push(c);
+    }
+  }
   // clientes que vuelven a recoger lo que encargaron o lo que pidieron por internet
   s.encargos ??= []; s.web ??= { orders: [], n: 1 };
   const back = [];
@@ -619,6 +632,8 @@ function closeBooks(s) {
   Object.assign(s.today, { gross, iva, rent, net: round2(gross + s.today.tips - iva - rent) });
 }
 
+export const eventsOn = (s) => s.expansions.includes('oeste') || s.expansions.includes('cafe');
+
 function endDay(s) {
   s.phase = 'evening';
   s.current = null;
@@ -634,6 +649,7 @@ function endDay(s) {
     newNetworks: Object.entries(NETWORKS).filter(([, n]) => n.level > s.today.level0 && n.level <= s.level).map(([k]) => k),
     newWeb: WEB_LEVEL > s.today.level0 && WEB_LEVEL <= s.level,
   };
+  if (s.event) { const bonus = s.event.type === 'autor' ? 5 : 3; s.rep += bonus; s.summary.event = { ...s.event, bonus }; }
   s.history.push({ day: s.day, profit: s.summary.profit, sales: s.today.sales });
   s.levelUps = [];
 }

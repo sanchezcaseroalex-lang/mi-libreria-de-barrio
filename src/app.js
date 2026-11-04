@@ -1,5 +1,5 @@
 // Librería cozy en 3D: la tienda ocupa toda la pantalla y los menús son una barra inferior que se despliega.
-import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale } from './books.js';
+import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale, sagaLabel } from './books.js';
 import { coverSVG, spineSVG } from './art.js';
 import {
   makePassable, routePoints, frontCells, T, ROWS, FURN, FURN_ORDER, EXPANSIONS, B, ENTRY, DOOR_ROW, setBounds, placed, blockedSet, findPath, serviceCell, seatCell, doorCell, cellsOf, dims,
@@ -23,7 +23,7 @@ import { showBook3D } from './viewer.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '2026-11-05 · instalable y sin conexión';
+const BUILD = '2026-11-05 · 7 mejoras';
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -1203,9 +1203,7 @@ async function pickBook(id) {
   persist();
   renderTop();
   if (!r.sold && !r.left) {
-    world.say(e.p, r.message, 'sad');
-    await wait(1400);
-    world.say(e.p, '');
+    await wait(500);
     world.carry(world.hero, null);
     busy = false;
     talking = true;
@@ -1246,8 +1244,7 @@ async function finishCustomer(e, r, id) {
     await wait(600);
   } else {
     world.carry(world.hero, null);
-    world.say(p, r.message, r.neutral ? '' : 'sad');
-    await wait(1500);
+    await wait(900);
   }
   world.say(p, '');
   if (r.review) toastReview(r.review);
@@ -1274,7 +1271,7 @@ async function finishCustomer(e, r, id) {
   busy = false;
   await showLevelUps();
   if (S.phase === 'evening' && S.day === 0) { S.phase = 'morning'; S.queue = []; dispersal(); syncWorld(); renderPanel(); return; }
-  if (S.phase === 'evening') { dispersal(); syncWorld(); renderPanel(); showSummary(); return; }
+  if (S.phase === 'evening') { dispersal(); syncWorld(); renderPanel(); toast('Ya no quedan clientes. Cierra la tienda cuando termines.'); return; }
   renderPanel();
 }
 
@@ -1318,7 +1315,7 @@ function renderServe() {
     const c = line[0].c;
     el.hidden = false;
     el.className = '';
-    el.innerHTML = `<p class="kick">En el mostrador</p><div class="asks"><div><b>${esc(c.name)}</b><p class="quote">“${esc(c.line)}”</p></div></div>
+    el.innerHTML = `<p class="kick">En el mostrador</p><div class="asks"><div><b>${esc(c.name)}</b></div></div>
       <button type="button" class="btn primary wide" data-act="attend">Atender a ${esc(c.name)}</button>`;
   } else if (S.phase === 'serving' && !editing && !talking && !busy && !S.current) {
     el.hidden = false;
@@ -1327,7 +1324,7 @@ function renderServe() {
   } else if (S.phase === 'evening' && !editing && !talking) {
     el.hidden = false;
     el.className = '';
-    el.innerHTML = '<p class="kick">Fin del día</p><button type="button" class="btn primary wide" data-act="summary">Ver el resumen</button>';
+    el.hidden = true;
   } else { el.hidden = true; el.innerHTML = ''; }
 }
 
@@ -1344,6 +1341,7 @@ function panelShop() {
     <div class="pn-h"><h2>Buenos días</h2><button type="button" class="x" data-act="tab" data-id="shop" aria-label="Cerrar">×</button></div>
     <p class="muted">${S.weather === 'lluvia' ? 'Llueve fuera: tarde perfecta para leer.' : S.weather === 'nublado' ? 'Cielo gris y ganas de novelas.' : 'Sol de mañana en el escaparate.'}${S.boxes.length ? ` Tienes <b>${S.boxes.length}</b> ${S.boxes.length === 1 ? 'caja' : 'cajas'} sin abrir en el almacén.` : ''}</p>
     ${trend.length ? `<p class="trend">Tendencia: ${trend.map((t) => `<b>${esc(BOOK[t.id].title)}</b>`).join(', ')}</p>` : ''}
+    ${S.event ? `<p class="trend">${S.event.type === 'autor' ? `Hoy firma <b>${esc(S.event.who)}</b> en la tienda: viene gente a por «${esc(BOOK[S.event.bookId].title)}».` : `Hoy es el club de lectura: leen «${esc(BOOK[S.event.bookId].title)}».`} Ten ejemplares.</p>` : ''}
     ${notShown ? `<p class="note">Hay <b>${notShown}</b> títulos que aún no tienes expuestos en la tienda.</p>` : ''}
     <div class="row3">
       <button type="button" class="btn primary" data-act="open" ${S.phase !== 'morning' ? 'disabled' : ''}>Abrir la tienda</button>
@@ -1475,7 +1473,7 @@ function showPicker() {
   const ids = [...map.keys()].sort((a, b) => BOOKS.findIndex((x) => x.id === a) - BOOKS.findIndex((x) => x.id === b));
   const slots = ids.map((id) => {
     const b = BOOK[id], e = map.get(id), out = e.store <= 0;
-    return `<button type="button" class="slot ${out ? 'out' : ''}" ${out ? 'disabled' : `data-act="pickBook" data-id="${id}"`}>${coverSVG(b, 78, 117)}<b>${esc(b.title)}</b>${S.settings.hard ? '' : `<span class="tags">${tagChips(b.tags.slice(0, 2))}</span>`}${out ? '<small style="color:#f6ecd9">agotado</small>' : `<em>${e.store}</em>`}</button>`;
+    return `<button type="button" class="slot ${out ? 'out' : ''}" ${out ? 'disabled' : `data-act="pickBook" data-id="${id}"`}>${coverSVG(b, 78, 117)}<b>${esc(b.title)}</b>${b.saga ? `<small class="saga">${esc(sagaLabel(b))}</small>` : ''}${S.settings.hard ? '' : `<span class="tags">${tagChips(b.tags.slice(0, 2))}</span>`}${out ? '<small style="color:#f6ecd9">agotado</small>' : `<em>${e.store}</em>`}</button>`;
   }).join('');
   openSheet(`<div class="sheet-h"><h2>Estantería del almacén</h2></div>
     <div class="picker"><p class="quote small">${esc(c.name)}: “${esc(c.line)}”</p>
@@ -1614,9 +1612,11 @@ function encargosHTML() {
 
 function panelOrders() {
   const pending = pendingOrders(S);
+  const own = sellable(S);
   const grid = BOOKS.map((b) => {
     if (b.unlock > S.level) return `<div class="bk locked"><div class="lock">${coverSVG(b, 84, 126)}<span>Nivel ${b.unlock}</span></div><b>???</b></div>`;
-    return `<div class="bk ord">${coverSVG(b, 84, 126)}<b>${esc(b.title)}</b><small>${esc(b.author)}</small><span class="tags">${tagChips(b.tags.slice(0, 2))}</span>
+    const have = (own.get(b.id)?.shop ?? 0) + (own.get(b.id)?.store ?? 0);
+    return `<div class="bk ord"><div class="cvw">${coverSVG(b, 84, 126)}<span class="own ${have ? '' : 'zero'}" title="Copias que tienes">${have}</span></div><b>${esc(b.title)}</b><small>${esc(b.author)}</small>${b.saga ? `<small class="saga">${esc(sagaLabel(b))}</small>` : ''}<span class="tags">${tagChips(b.tags.slice(0, 2))}</span>
       <div class="buy"><span>Coste ${wholesale(b)} € · venta ${b.price} €</span><div><button type="button" class="btn small" data-act="order" data-id="${b.id}" data-n="1">+1</button><button type="button" class="btn small primary" data-act="order" data-id="${b.id}" data-n="3">+3</button></div></div></div>`;
   }).join('');
   panelEl.innerHTML = `
@@ -1812,6 +1812,7 @@ function showSummary() {
   const s = S.summary;
   if (!s) return;
   const perks = [
+    ...(s.event ? [`<li>${s.event.type === 'autor' ? `Firma de ${esc(s.event.who)}` : 'Club de lectura'}: +${s.event.bonus} de reputación</li>`] : []),
     ...s.newBooks.map((id) => `<li>Libro nuevo: <b>${esc(BOOK[id].title)}</b></li>`),
     ...s.newItems.map((n) => `<li>Ya puedes comprar: <b>${esc(n)}</b></li>`),
     ...s.newNetworks.map((k) => `<li>Red social: <b>${NETWORKS[k].name}</b></li>`),
@@ -2171,7 +2172,10 @@ renderPanel();
 const openBtn = $('#openShopBtn');
 function updateOpenBtn() {
   if (!openBtn) return;
-  const show = S.hero && S.phase === 'morning' && !busy && !editing && !introPending && menuEl.hidden && layer.hidden && phoneEl.hidden && dlg.hidden && !panelOpen && !samirIn && !talking && !document.body.classList.contains('intro') && !(S.day === 0 && S.served >= 1);
+  const calm = S.hero && !busy && !editing && !introPending && menuEl.hidden && layer.hidden && phoneEl.hidden && dlg.hidden && !panelOpen && !samirIn && !talking && !document.body.classList.contains('intro');
+  const evening = calm && S.phase === 'evening' && S.day > 0 && !!S.summary;
+  openBtn.textContent = evening ? 'Cerrar tienda' : 'Abrir tienda'; openBtn.dataset.act = evening ? 'summary' : 'open';
+  const show = evening || S.hero && S.phase === 'morning' && !busy && !editing && !introPending && menuEl.hidden && layer.hidden && phoneEl.hidden && dlg.hidden && !panelOpen && !samirIn && !talking && !document.body.classList.contains('intro') && !(S.day === 0 && S.served >= 1);
   openBtn.hidden = !show;
 }
 setInterval(updateOpenBtn, 350);

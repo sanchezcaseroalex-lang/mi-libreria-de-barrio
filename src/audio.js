@@ -64,9 +64,11 @@ export function sfx(name) {
 
 // susurro de diálogo (estilo Animal Crossing): una sílaba breve con tono según quien habla
 export function blip(seed = 0) {
-  if (!ctx || vol.sfx <= 0 || ctx.state !== 'running') return;
-  const base = 300 + (seed % 7) * 38, f = base * (0.9 + Math.random() * 0.35);
-  tone('triangle', f, ctx.currentTime + 0.001, 0.07, 0.07);
+  if (!ctx || vol.sfx <= 0) return;
+  if (ctx.state !== 'running') { ctx.resume?.(); return; }
+  const base = 330 + (seed % 7) * 42, f = base * (0.92 + Math.random() * 0.3), t = ctx.currentTime + 0.001;
+  tone('triangle', f, t, 0.11, 0.42, sfxBus, 0.004);
+  tone('sine', f * 2, t, 0.08, 0.16, sfxBus, 0.004);
 }
 
 /* ---------- Música: archivos libres de derechos en audio/musica/ (lista.json la genera herramientas/actualizar-musica.ps1) ----------

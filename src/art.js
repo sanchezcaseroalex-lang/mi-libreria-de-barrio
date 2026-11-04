@@ -1,5 +1,5 @@
 // Ilustraciones por código: motivos de portada, lomos, portadas y clientes.
-import { BOOK } from './books.js';
+import { BOOK, romano } from './books.js';
 
 let uid = 0;
 const nid = (p) => `${p}${uid++}`;
@@ -112,6 +112,7 @@ export function coverSVG(book, dw = 120, dh = 180) {
     ${text}
     <path d="M${w * 0.3} ${h - 25} H${w * 0.7}" stroke="${ca}" stroke-width=".8" opacity=".8"/>
     <text x="${w / 2}" y="${h - 13}" text-anchor="middle" font-family="Nunito, sans-serif" font-weight="700" font-size="6.2" letter-spacing="1.2" fill="${light ? '#333' : ct}" opacity=".85">${book.author.toUpperCase()}</text>
+    ${book.saga ? `<g><rect x="${w - 30}" y="5" width="25" height="19" rx="2" fill="#000" opacity=".5"/><text x="${w - 17.5}" y="18" text-anchor="middle" font-family="Cinzel, serif" font-weight="700" font-size="11" fill="#fff">${romano(book.saga.n)}</text></g>` : ''}
     <rect width="3" height="${h}" fill="#000" opacity=".18"/><rect x="3" width="1" height="${h}" fill="#fff" opacity=".18"/>
   </svg>`;
 }
