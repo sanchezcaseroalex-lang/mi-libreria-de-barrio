@@ -1,5 +1,5 @@
 import { addPts, initPass, TIERS, tierOf, EDITIONS, applyEditions } from './pass.js';
-import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale } from './books.js';
+import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale, sectionOf } from './books.js';
 import { newCustomer, newUnfillable, pickChar, bookWeights, thanksLine, nopeLine, pickupCustomer, parcelCustomer } from './cast.js';
 import { FURN, placed, placementError, cellsOf, dims, EXPANSIONS, setBounds } from './layout.js';
 
@@ -162,7 +162,7 @@ export function containers(s) {
   for (const f of placed(s.furniture)) {
     if (f.type === 'shelf') {
       si++;
-      f.rows.forEach((arr, ri) => out.push({ id: `${f.uid}:${ri}`, arr, cap: ROW_CAP, kind: 'row', genre: GENRE_ORDER[ri], furn: f, n: si, row: ri }));
+      f.rows.forEach((arr, ri) => out.push({ id: `${f.uid}:${ri}`, arr, cap: ROW_CAP, kind: 'row', genre: GENRE_ORDER[ri], section: GENRE_ORDER[ri], furn: f, n: si, row: ri }));
     } else if (f.type === 'table') {
       out.push({ id: `${f.uid}:t`, arr: f.books, cap: TABLE_CAP, kind: 'table', furn: f });
     }
@@ -208,12 +208,12 @@ export function takeBack(s, containerId, i) {
 // Coloca el almacén por géneros: cada libro en la balda de su género si cabe y, si no, donde haya hueco.
 export function autoPlace(s) {
   let placedN = 0;
-  const ids = Object.keys(s.storage).sort((a, b) => GENRE_ORDER.indexOf(BOOK[a].genre) - GENRE_ORDER.indexOf(BOOK[b].genre) || a.localeCompare(b));
+  const ids = Object.keys(s.storage).sort((a, b) => GENRE_ORDER.indexOf(sectionOf(BOOK[a])) - GENRE_ORDER.indexOf(sectionOf(BOOK[b])) || a.localeCompare(b));
   for (const id of ids) {
     if (onDisplay(s).has(id)) continue;
     while (s.storage[id] > 0) {
       const cs = containers(s).filter((c) => c.kind === 'row');
-      const target = cs.find((c) => c.genre === BOOK[id].genre && c.arr.length < c.cap) ?? cs.find((c) => c.arr.length < c.cap);
+      const target = cs.find((c) => c.section === sectionOf(BOOK[id]) && c.arr.length < c.cap) ?? cs.find((c) => c.arr.length < c.cap);
       if (!target) break;
       placeBook(s, id, target.id);
       placedN++;

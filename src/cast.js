@@ -205,6 +205,22 @@ export function parcelLines({ n, total, name, combined = false }) {
   ];
 }
 
+const PREF_NEW = {
+  lucia: { romance: 4, humor: 1.5, infantil: 0.8, scifi: 0.6, literaria: 0.6, viajes: 1.2 },
+  anselmo: { historica: 4, literaria: 3, ensayo: 2.5, viajes: 1.6, negra: 2, scifi: 1.6, romance: 0.3, humor: 1, terror: 0.4, cocina: 0.8, infantil: 0.3 },
+  marta: { negra: 4, terror: 2.5, scifi: 1, ensayo: 1, humor: 0.8, romance: 0.3, cocina: 0.5, infantil: 0.2 },
+  hugo: { scifi: 4, terror: 1.8, humor: 2, infantil: 0.3, historica: 0.8, ensayo: 1, cocina: 0.4, viajes: 0.6 },
+  carmen: { romance: 3, cocina: 3, historica: 2, viajes: 2, ensayo: 1.2, humor: 1.5, literaria: 1.5, infantil: 1.5 },
+  nico: { terror: 3, humor: 2.5, scifi: 2, romance: 0.8, ensayo: 0.4, cocina: 0.3 },
+  irene: { romance: 2.5, ensayo: 2.5, viajes: 2.5, humor: 1.5, cocina: 1.5, literaria: 1 },
+  ruben: { ensayo: 3, negra: 2.5, scifi: 1.5, humor: 1.5, cocina: 0.8, romance: 0.4, infantil: 0.2 },
+  sofia: { literaria: 4, historica: 2, romance: 2, ensayo: 2, terror: 1.5, viajes: 1.5, humor: 0.6 },
+  pilar: { negra: 3, historica: 2.5, cocina: 2.5, viajes: 1, romance: 1, humor: 1, terror: 0.3, scifi: 0.2 },
+  elena: { romance: 3, viajes: 3, cocina: 2, literaria: 2, ensayo: 2, humor: 1.2, historica: 1.5 },
+  teo: { infantil: 6, humor: 1.5, scifi: 1, terror: 0, negra: 0, romance: 0, historica: 0.1, ensayo: 0, cocina: 0.2, viajes: 0.2, literaria: 0 },
+};
+CAST.forEach((c) => { Object.assign(c.pref, PREF_NEW[c.id] ?? {}); });
+
 export const CAST_BY_ID = Object.fromEntries(CAST.map((c) => [c.id, c]));
 export const CAST_LOOKS = CAST.map((c) => c.look);
 
@@ -252,7 +268,7 @@ export function ambientLook(avoid = []) {
 /* ---------- Peticiones que no se pueden atender ---------- */
 
 export const UNKNOWN_TITLES = ['El jardín de los cuervos mansos', 'La casa de las mil lunas', 'Crónicas del faro olvidado', 'El último mapa de Valdermar', 'Cuentos del bosque ceniza', 'La torre que respiraba', 'Memorias de un dragón jubilado', 'El invierno de las campanas', 'Las hijas del río negro', 'El cartógrafo de sueños'];
-export const UNKNOWN_GENRES = ['ciencia ficción', 'poesía', 'cocina', 'cómic', 'historia', 'autoayuda', 'libros de viajes', 'novela rosa clásica'];
+export const UNKNOWN_GENRES = ['poesía', 'cómic', 'manga', 'libros de jardinería', 'teatro', 'libros de bricolaje', 'guías de senderismo', 'libros de astrología'];
 export const isUnknown = (c) => c.type === 'unknownTitle' || c.type === 'unknownGenre';
 
 /* ---------- Conversación ---------- */
@@ -263,6 +279,17 @@ const tagText = (ids) => {
 };
 
 export const PROBES = [
+  { id: 'espacio', q: '¿Te apetece espacio, naves y planetas?', tags: ['espacio', 'futuro'] },
+  { id: 'miedo', q: '¿Te gusta pasar un poco de miedo?', tags: ['miedo', 'fantasmas'] },
+  { id: 'detective', q: '¿Con un detective y calles oscuras?', tags: ['detectives', 'crimen'] },
+  { id: 'epoca', q: '¿Ambientado en otra época?', tags: ['epoca', 'historia'] },
+  { id: 'risa', q: '¿Algo para reírte un rato?', tags: ['humor'] },
+  { id: 'ternura', q: '¿Algo tierno, para leer con calma?', tags: ['ternura', 'emociones'] },
+  { id: 'aprender', q: '¿Quieres aprender algo nuevo?', tags: ['reflexion', 'habitos', 'historia'] },
+  { id: 'cocinar', q: '¿Es para ponerte el delantal?', tags: ['recetas'] },
+  { id: 'viajar', q: '¿Para viajar, aunque sea desde el sofá?', tags: ['viajes', 'superacion'] },
+  { id: 'verano', q: '¿Una historia de amor de hoy en día?', tags: ['verano', 'romance'] },
+  { id: 'supervivir', q: '¿Alguien que tiene que sobrevivir a como dé lugar?', tags: ['supervivencia'] },
   { id: 'ligero', q: '¿Algo ligero y entretenido?', tags: ['aventura', 'academia', 'romance'] },
   { id: 'intenso', q: '¿Algo intenso que te deje pensando?', tags: ['oscuro', 'psico', 'crimen', 'politica'] },
   { id: 'dragones', q: '¿Te van los dragones?', tags: ['dragones'] },
@@ -281,6 +308,21 @@ export const voiceOf = (c) => CAST_BY_ID[c.charId]?.voice ?? {
   intro: [''], yes: ['Sí.'], hmm: ['Mmm.'], like: ['Me gustó'], thanks: ['Gracias, me lo llevo.'], nope: ['No es lo que busco.'],
 };
 
+// Cómo pide cada tipo de libro quien lo busca por género
+const GENRE_ASKS = {
+  scifi: ['Quiero viajar a otro planeta sin salir del sofá.', 'Me apetece ciencia ficción de la buena, de las que hacen pensar.', '¿Qué tenéis de naves, futuros raros y cosas así?'],
+  terror: ['Quiero pasar miedo, pero con la luz encendida.', '¿Tenéis algo de terror? Que no me deje dormir.', 'Busco una historia que me ponga los pelos de punta.'],
+  negra: ['Busco novela negra, de las de gabardina y calles mojadas.', '¿Tenéis algo con un detective con pocas ganas de vivir?', 'Me apetece una historia de crímenes y ciudades sucias.'],
+  romance: ['Quiero un romance de los que te dejan sonriendo a la nada.', 'Busco una historia de amor para el sofá y una manta.', '¿Tenéis algo que me derrita el corazón?'],
+  historica: ['Me gustan las novelas históricas bien documentadas.', '¿Tenéis algo ambientado en otra época, con sus intrigas y todo?', 'Busco una historia que me transporte al pasado.'],
+  literaria: ['Busco algo de literatura, de las que se subrayan.', 'Quiero una novela que merezca la pena releer.', '¿Tenéis algo bien escrito, con atmósfera?'],
+  humor: ['Necesito reírme, ¿qué tenéis de humor?', 'Busco algo divertido que me saque carcajadas en el metro.', '¿Hay algo gracioso por aquí? Lo necesito.'],
+  infantil: ['Busco un libro para un peque, de los que se leen por la noche.', '¿Qué tenéis infantil, con dibujos o con corazón?', 'Es para leer en voz alta, ¿qué me recomiendas?'],
+  ensayo: ['Quiero algo para aprender y salir con la cabeza más ordenada.', 'Busco un ensayo que explique el mundo sin aburrir.', '¿Tenéis algo de autoayuda que no sea una chorrada?'],
+  cocina: ['Busco un libro de cocina que me inspire.', '¿Tenéis algo de recetas? Pero que se lea como una historia.', 'Quiero cocinar algo rico este fin de semana, ¿qué libro me aconsejas?'],
+  viajes: ['Me apetece un libro de viajes, de esos que dan ganas de hacer la maleta.', '¿Tenéis algo para soñar con países lejanos?', 'Busco un libro que me haga caminar con la mente.'],
+};
+
 export function openingLine(c) {
   const v = voiceOf(c), b = BOOK[c.target];
   const intro = pick(v.intro);
@@ -296,7 +338,7 @@ export function openingLine(c) {
   let pre = '', clause, suf = '';
   if (sc === 'gift') {
     pre = `Busco un regalo para ${c.who}. `;
-    clause = c.type === 'tags' ? `Le encantan las historias con ${info}.` : `Le gustan las historias de ${gen}.`;
+    clause = c.type === 'tags' ? `Le encantan los libros con ${info}.` : `Le gustan ${GENRES[b.genre].fic === false ? 'los libros' : 'las historias'} de ${gen}.`;
   } else if (sc === 'trip') {
     pre = `${pick(TRIP)} `;
     clause = c.type === 'tags' ? `Algo con ${info}.` : `Algo de ${gen}.`;
@@ -307,6 +349,7 @@ export function openingLine(c) {
     pre = `Me encantó «${c.simRef}». `;
     clause = pick(['¿Tenéis algo parecido?', '¿Qué me recomiendas que se le parezca?', 'Busco algo en esa línea.']);
   } else if (c.type === 'tags') clause = pick([`Busco algo con ${info}.`, `Hoy me apetece una historia con ${info}.`, `¿Qué tenéis con ${info}?`, `Quiero perderme en algo con ${info}.`]);
+  else if (GENRE_ASKS[b.genre] && Math.random() < 0.55) clause = pick(GENRE_ASKS[b.genre]);
   else clause = pick([`Quiero algo de ${gen}.`, `Estoy en racha de ${gen}, ¿qué tienes?`, `Sorpréndeme con algo de ${gen}.`, `¿Qué es lo mejor que tenéis de ${gen}?`]);
   if (c.budget) suf = ` No quiero gastarme más de ${c.budget} €.`;
   return `${intro} ${pre}${clause}${suf}`.trim();

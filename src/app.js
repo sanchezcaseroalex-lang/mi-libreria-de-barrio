@@ -1,5 +1,5 @@
 // Librería cozy en 3D: la tienda ocupa toda la pantalla y los menús son una barra inferior que se despliega.
-import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale, sagaLabel } from './books.js';
+import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale, sagaLabel, SECTIONS, sectionOf } from './books.js';
 import { coverSVG, spineSVG } from './art.js';
 import {
   makePassable, routePoints, frontCells, T, ROWS, FURN, FURN_ORDER, EXPANSIONS, B, ENTRY, DOOR_ROW, setBounds, placed, blockedSet, findPath, serviceCell, seatCell, doorCell, cellsOf, dims,
@@ -23,7 +23,7 @@ import { showBook3D } from './viewer.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '2026-11-05 · 7 mejoras';
+const BUILD = '2026-11-05 · 40 libros, gato nuevo';
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -1002,6 +1002,7 @@ function renderCreator() {
 
 /* ---------- Diálogo: ilustración grande, texto abajo y turnos ---------- */
 
+const SEC = Object.fromEntries(SECTIONS.map((s) => [s.id, s]));
 const dlg = $('#dlg');
 const dlgL = $('#dlgL'), dlgR = $('#dlgR');
 let blipSeed = 0;
@@ -1490,7 +1491,7 @@ function furnSheet(uidv) {
   if (!cs.length) return;
   openSheet(`${sheetHead(f.type === 'shelf' ? 'Estantería' : 'Mesa de novedades')}
     <p class="muted">Aquí se ve un ejemplar de cada título; el resto está en el almacén. Toca un libro para guardarlo.</p>
-    ${cs.map((c) => `<div class="rowlab"><i style="background:${c.kind === 'row' ? GENRES[c.genre].color : '#e0a93b'}"></i>${c.kind === 'row' ? GENRES[c.genre].label : 'Novedades'} <small>${c.arr.length}/${c.cap}</small></div>
+    ${cs.map((c) => `<div class="rowlab"><i style="background:${c.kind === 'row' ? SEC[c.section].color : '#e0a93b'}"></i>${c.kind === 'row' ? SEC[c.section].label : 'Novedades'} <small>${c.arr.length}/${c.cap}</small></div>
       <div class="shelfrow">${c.arr.map((id, i) => `<button type="button" class="sp" data-act="takeback" data-cid="${c.id}" data-i="${i}" data-uid="${uidv}" title="${esc(BOOK[id].title)}">${spineSVG(BOOK[id], 46, 1.35)}</button>`).join('') || '<span class="empty">Vacía</span>'}</div>`).join('')}
     <button type="button" class="btn wide" data-act="autoall">Exponer los libros que faltan</button>`);
 }
@@ -1499,9 +1500,9 @@ function placeSheet(id) {
   const b = BOOK[id];
   const n = S.storage[id] ?? 0;
   const dests = containers(S).map((c) => {
-    const label = c.kind === 'row' ? `Estantería ${c.n} · ${GENRES[c.genre].short}` : 'Mesa de novedades';
-    const note = c.kind === 'row' ? `${c.arr.length}/${c.cap}${c.genre === b.genre ? ' · su género' : ''}` : `${c.arr.length}/${c.cap} · +10 % de precio`;
-    return `<button type="button" class="dest" data-act="placeAt" data-id="${id}" data-cid="${c.id}" ${c.arr.length >= c.cap ? 'disabled' : ''}><i style="background:${c.kind === 'row' ? GENRES[c.genre].color : '#e0a93b'}"></i><span>${label}</span><small>${note}</small></button>`;
+    const label = c.kind === 'row' ? `Estantería ${c.n} · ${SEC[c.section].short}` : 'Mesa de novedades';
+    const note = c.kind === 'row' ? `${c.arr.length}/${c.cap}${c.section === sectionOf(b) ? ' · su sección' : ''}` : `${c.arr.length}/${c.cap} · +10 % de precio`;
+    return `<button type="button" class="dest" data-act="placeAt" data-id="${id}" data-cid="${c.id}" ${c.arr.length >= c.cap ? 'disabled' : ''}><i style="background:${c.kind === 'row' ? SEC[c.section].color : '#e0a93b'}"></i><span>${label}</span><small>${note}</small></button>`;
   });
   openSheet(`${sheetHead(esc(b.title))}<p class="muted">Se expone un ejemplar y el resto se queda en el almacén (${n} ahora).</p><div class="dests">${dests.join('') || '<p class="empty">No tienes estanterías colocadas. Pulsa Decorar.</p>'}</div>`);
 }
@@ -2188,5 +2189,5 @@ window.Loading?.set(0.9);
 showMenu();
 window.Loading?.hide();
 if (S.phase === 'serving') { S.phase = 'morning'; S.current = null; S.served = 0; persist(); }
-window.__lib = { get S() { return S; }, askEdition, act, world, walkHeroTo, maybeDelivery, showLevelUps, renderPanel };
+window.__lib = { get S() { return S; }, askEdition, act, world, walkHeroTo, maybeDelivery, showLevelUps, renderPanel, syncWorld };
 void T; void cellsOf; void ROT_Y;

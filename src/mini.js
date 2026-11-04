@@ -1,5 +1,5 @@
 // Minijuegos de ordenar estantes: por género, por sagas y encajar huecos. Sin cronómetro: solo importa hacerlo con cuidado.
-import { BOOKS, BOOK, GENRES, GENRE_ORDER, SAGAS } from './books.js';
+import { BOOKS, BOOK, GENRE_ORDER, SECTIONS, SAGAS, sectionOf } from './books.js';
 import { spineSVG, spineInner, coverSVG } from './art.js';
 import { sfx } from './audio.js';
 
@@ -68,15 +68,15 @@ export function runMini({ mode, hard = false, level = 1, buzz = null }) {
     if (mode === 'genero') {
       const n = hard ? 12 : 8;
       let pool = shuffle(avail).slice(0, n);
-      GENRE_ORDER.forEach((g) => { if (!pool.some((b) => b.genre === g)) { const extra = avail.find((b) => b.genre === g && !pool.includes(b)); if (extra) pool[pool.length - 1] = extra; } });
-      board.innerHTML = `<div class="mshelf">${GENRE_ORDER.map((g) => `<div class="mrow" data-g="${g}"><span class="mtag" style="background:${GENRES[g].color}">${esc(GENRES[g].label)}</span><div class="slots"></div></div>`).join('')}</div>
+      GENRE_ORDER.forEach((g) => { if (!pool.some((b) => sectionOf(b) === g)) { const extra = avail.find((b) => sectionOf(b) === g && !pool.includes(b)); if (extra) pool[pool.length - 1] = extra; } });
+      board.innerHTML = `<div class="mshelf">${GENRE_ORDER.map((g) => `<div class="mrow" data-g="${g}"><span class="mtag" style="background:${SECTIONS.find((s) => s.id === g).color}">${esc(SECTIONS.find((s) => s.id === g).label)}</span><div class="slots"></div></div>`).join('')}</div>
         <p class="mhint">Libros por ordenar</p><div class="pile">${shuffle(pool).map((b) => `<div class="mb" data-id="${b.id}" title="${esc(b.title)}">${spineSVG(b, 46, 1.55)}</div>`).join('')}</div>`;
       let left = pool.length;
       const upd = () => { prog.textContent = `${pool.length - left} de ${pool.length} colocados`; }; upd();
       board.querySelectorAll('.mb').forEach((el) => drag(el, (under) => {
         const row = under?.closest?.('.mrow');
         if (!row) return;
-        if (row.dataset.g === BOOK[el.dataset.id].genre) { row.querySelector('.slots').append(el); el.classList.add('placed'); sfx('place'); left--; upd(); if (!left) setTimeout(() => finish(), 350); }
+        if (row.dataset.g === sectionOf(BOOK[el.dataset.id])) { row.querySelector('.slots').append(el); el.classList.add('placed'); sfx('place'); left--; upd(); if (!left) setTimeout(() => finish(), 350); }
         else { mistakes++; buzz?.(60); sfx('error'); shake(row); }
       }, (ev) => board.querySelectorAll('.mrow').forEach((r) => r.classList.toggle('hot', !!ev && !!document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.mrow') && document.elementFromPoint(ev.clientX, ev.clientY).closest('.mrow') === r))));
     }

@@ -1,6 +1,6 @@
 // Service worker: la aplicación funciona sin conexión tras la primera carga.
 // Cambia VERSION al publicar una versión nueva para forzar la actualización.
-const VERSION = 'v6-2026-11-05';
+const VERSION = 'v7-2026-11-05';
 const SHELL = 'shell-' + VERSION, ASSETS = 'assets-' + VERSION;
 const PRECACHE = ["index.html","manifest.webmanifest","styles.css","styles3d.css","styles-phone.css","styles-loading.css","icons/icon-maskable-512.png","icons/icon-96.png","arte/logo/icono-pantalla.webp","icons/icon-192.png","icons/icon-512.png","icons/icon-180.png","arte/pantallas/carga.jpg","vendor/three.module.js","vendor/addons/geometries/RoundedBoxGeometry.js","src/app.js","src/art.js","src/audio.js","src/books.js","src/boot.js","src/boxscene.js","src/cast.js","src/furniture3d.js","src/game.js","src/kit3d.js","src/layout.js","src/mini.js","src/pass.js","src/people3d.js","src/rodeos.js","src/store.js","src/story.js","src/town3d.js","src/van3d.js","src/viewer.js","src/world.js","fonts/caveat-latin-600-normal.woff2","fonts/cinzel-latin-700-normal.woff2","fonts/fraunces-latin-600-normal.woff2","fonts/fraunces-latin-700-normal.woff2","fonts/nunito-latin-400-normal.woff2","fonts/nunito-latin-700-normal.woff2","fonts/oswald-latin-500-normal.woff2"];
 

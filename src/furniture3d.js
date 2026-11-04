@@ -3,7 +3,7 @@ import {
   THREE, M, MT, MG, mWalnut, mOak, mDark, mPage, mTerra, mSoil, mBrass, canvasTex, mulberry32, hashStr,
   box, boxAt, cyl, cylAt, sph, shade, spineBook, displayBook, lyingBook,
 } from './kit3d.js';
-import { BOOK, GENRES, GENRE_ORDER } from './books.js';
+import { BOOK, SECTIONS } from './books.js';
 const mWalnutBase = mWalnut;
 
 const mCream = M('#f3e7c9', .9);
@@ -41,7 +41,7 @@ function shelf(f, ctx) {
   rows.forEach((arr, ri) => {
     const yb = .14 + ri * .6;
     boxAt(g, W - .08, .04, D - .04, mWalnut, 0, yb, 0, .005);
-    const col = GENRES[GENRE_ORDER[ri]]?.color ?? '#c8693f';
+    const col = SECTIONS[ri]?.color ?? '#c8693f';
     boxAt(g, .5, .03, .012, M(col, .7), -W / 2 + .45, yb + .005, D / 2 - .016, .004);   // etiqueta del género
     let x = -W / 2 + .1; const yTop = yb + .04;
     arr.forEach((id, i) => {
@@ -179,15 +179,75 @@ function plant(f) {
 }
 function catBed(f, ctx) {
   const g = new THREE.Group();
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(.33, .09, 12, 28), M('#b56a57', .95)); rim.rotation.x = Math.PI / 2; rim.position.y = .09; rim.castShadow = true; g.add(rim);
-  cylAt(g, .33, .33, .06, M('#e8d6b0', .95), 0, .02, 0, 28);
-  const fur = M('#d98a45', .95), fur2 = M('#f1d9b0', .95);
-  const body = sph(.2, fur, 1.15, .62, .85); body.position.set(0, .2, 0); g.add(body);
-  const head = sph(.12, fur, 1, .95, .95); head.position.set(.2, .22, .05); g.add(head);
-  const e1 = new THREE.Mesh(new THREE.ConeGeometry(.035, .07, 4), fur), e2 = e1.clone(); e1.position.set(.2, .33, -.01); e2.position.set(.2, .33, .11); g.add(e1, e2);
-  const mz = sph(.045, fur2, 1, .8, 1); mz.position.set(.3, .2, .05); g.add(mz);
-  const tail = new THREE.Mesh(new THREE.TorusGeometry(.17, .035, 8, 20, Math.PI * 1.2), fur); tail.rotation.set(Math.PI / 2, 0, 2.2); tail.position.set(-.08, .12, .09); g.add(tail);
-  g.userData.anim = (t) => { body.scale.y = .62 + Math.sin(t * 1.6) * .025; };
+  // cama
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(.34, .1, 12, 32), M('#b56a57', .95)); rim.rotation.x = Math.PI / 2; rim.position.y = .09; rim.castShadow = true; g.add(rim);
+  cylAt(g, .34, .34, .06, M('#e8d6b0', .95), 0, .02, 0, 28);
+  cylAt(g, .27, .27, .05, M('#d9b98a', 1), 0, .06, 0, 24);
+  // pelaje atigrado naranja con rayas pintadas
+  const furTex = canvasTex(256, 128, (c, w, h) => {
+    c.fillStyle = '#d98a45'; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 400; i++) { c.fillStyle = Math.random() < .5 ? 'rgba(255,210,150,.18)' : 'rgba(150,70,20,.16)'; c.fillRect(Math.random() * w, Math.random() * h, 2, 5 + Math.random() * 5); }
+    c.fillStyle = 'rgba(150,66,20,.5)';
+    for (let x = 4; x < w; x += 16) { c.beginPath(); c.moveTo(x, h * .28); c.quadraticCurveTo(x + 3, h * .5, x - 1, h * .74); c.lineTo(x + 5, h * .72); c.quadraticCurveTo(x + 8, h * .5, x + 4, h * .3); c.fill(); }
+  });
+  const fur = MT(furTex, .96), furPlain = M('#dc8d48', .96), cream = M('#f4e2c4', .95), pink = M('#e79aa0', .8), dark = M('#2a1a12', .5), green = M('#9bc65a', .35);
+  const cat = new THREE.Group(); cat.position.y = .06; g.add(cat);
+  const body = sph(.2, fur, 1.35, .62, .9); body.position.set(-.02, .15, 0); cat.add(body);
+  const haunch = sph(.15, furPlain, 1, .85, .95); haunch.position.set(-.13, .13, .03); cat.add(haunch);
+  const chest = sph(.1, cream, 1, .9, .95); chest.position.set(.14, .12, 0); cat.add(chest);
+  const paws = [[.25, .035, .07], [.25, .035, -.07]].map(([x, y, z]) => { const p = sph(.04, cream, 1.4, .7, .9); p.position.set(x, y, z); cat.add(p); return p; });
+  // cabeza
+  const head = new THREE.Group(); head.position.set(.22, .2, 0); cat.add(head);
+  const skull = sph(.105, furPlain, 1, .92, 1.05); head.add(skull);
+  const muzzle = sph(.045, cream, 1.1, .75, 1.15); muzzle.position.set(.085, -.03, 0); head.add(muzzle);
+  const nose = sph(.015, pink, 1, .8, 1.2); nose.position.set(.125, -.015, 0); head.add(nose);
+  const earMat = furPlain;
+  const ears = [-1, 1].map((s) => {
+    const e = new THREE.Group(); e.position.set(.0, .09, s * .07);
+    const o = new THREE.Mesh(new THREE.ConeGeometry(.04, .09, 4), earMat); o.rotation.x = s * .22; o.castShadow = true; e.add(o);
+    const i = new THREE.Mesh(new THREE.ConeGeometry(.022, .06, 4), pink); i.position.set(.012, -.005, 0); i.rotation.x = s * .22; e.add(i);
+    head.add(e); return e;
+  });
+  const eyes = [-1, 1].map((s) => {
+    const e = new THREE.Group(); e.position.set(.088, .028, s * .045);
+    const white = sph(.02, green, .6, 1, 1); e.add(white);
+    const pupil = sph(.011, dark, .5, 1.5, .6); pupil.position.x = .008; e.add(pupil);
+    const lid = sph(.024, furPlain, .8, 1, 1.1); lid.position.x = -.002; lid.userData.lid = true; e.add(lid);
+    head.add(e); return { g: e, lid };
+  });
+  const wmat = new THREE.MeshBasicMaterial({ color: '#f7f2e8' });
+  [-1, 1].forEach((s) => [-.02, 0, .02].forEach((dy, k) => {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(.0025, .0025, .11, 4), wmat); w.rotation.set(0, 0, 0); w.rotation.x = Math.PI / 2 + s * .12; w.rotation.z = (k - 1) * .22; w.position.set(.11, -.025 + dy, s * .065); head.add(w);
+  }));
+  // cola: cadena de segmentos que ondula
+  const tail = []; const segs = 7;
+  for (let i = 0; i < segs; i++) { const sg = sph(.036 - i * .0025, i > segs - 3 ? cream : furPlain, 1.25, 1, 1); cat.add(sg); tail.push(sg); }
+  const state = { sleepy: 1 };
+  g.userData.anim = (t) => {
+    const T = t % 30;
+    // 0-15 duerme; 15-17 despierta; 17-24 alerta; 24-27 bosteza y se relaja; 27-30 vuelve a dormir
+    let awake = 0;
+    if (T >= 15 && T < 17) awake = (T - 15) / 2; else if (T >= 17 && T < 24) awake = 1; else if (T >= 24 && T < 27) awake = 1 - (T - 24) / 3 * .6; else if (T >= 27) awake = .4 * (1 - (T - 27) / 3);
+    const breathe = Math.sin(t * (1.5 + awake * .8));
+    body.scale.set(1.35, .62 + breathe * (.022 - awake * .008), .9 + breathe * .01);
+    // postura: dormida = cabeza apoyada baja y girada hacia el cuerpo; alerta = cabeza alta
+    head.position.set(.22 - (1 - awake) * .05, .2 + awake * .08 - (1 - awake) * .035, (1 - awake) * .06);
+    head.rotation.set(0, (1 - awake) * -.55 + Math.sin(t * .9) * .5 * Math.max(0, awake - .2), -(1 - awake) * .3 + Math.sin(t * 1.3) * .05 * awake);
+    chest.position.y = .12 + awake * .03;
+    paws.forEach((p, i) => { p.position.x = .25 - (1 - awake) * .03; p.position.z = (i ? -1 : 1) * (.07 - (1 - awake) * .015); });
+    // ojos: cerrados al dormir, abiertos al despertar, parpadeo ocasional
+    const blink = (Math.sin(t * 2.1) > .985 || (t % 5 > 4.85)) ? 0 : 1;
+    const open = Math.max(0, Math.min(1, (awake - .25) * 2.2)) * blink;
+    eyes.forEach((e) => { e.lid.scale.set(.8, 1.15 - open * 1.1, 1.1); e.lid.position.y = open * .02; });
+    ears.forEach((e, i) => { e.rotation.z = Math.sin(t * 4 + i * 2.3) * (T > 8 && T < 9 || awake > .8 ? .22 : .03) * (awake > .3 ? 1 : (T % 7 < .4 ? 1 : .2)); });
+    // cola: rodea el cuerpo por el lado visible y ondula (más viva al despertar)
+    const sw = .3 + awake * 1;
+    tail.forEach((sg, i) => {
+      const u = i / (segs - 1);
+      const wave = Math.sin(t * (1.1 + awake * 1.8) - i * .7) * .03 * sw * u * 2;
+      sg.position.set(-.2 + u * .36, .045 + Math.sin(u * 3) * .02 + awake * .03 * u, .13 + Math.sin(u * Math.PI) * .1 + wave);
+    });
+  };
   return shade(g);
 }
 function rug(f) {
