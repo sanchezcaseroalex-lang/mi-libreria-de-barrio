@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#4a1d2a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mi librería">
+<title>Mi librería de barrio</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-96.png" type="image/png" sizes="96x96">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
+<link rel="preload" href="./fonts/fraunces-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./styles3d.css">
+<link rel="stylesheet" href="./styles-phone.css">
+<link rel="stylesheet" href="./styles-loading.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+</script>
+</head>
+<body class="g3d">
+<div id="loading" class="ld" data-kind="boot">
+  <div class="ld-art">
+    <img alt="" src="arte/pantallas/carga.jpg">
+    <svg class="ld-fallback" viewBox="0 0 400 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="lds" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a1d2a"/><stop offset=".45" stop-color="#c0442f"/><stop offset=".8" stop-color="#f4a24a"/><stop offset="1" stop-color="#ffd98a"/></linearGradient>
+        <radialGradient id="ldg" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff1b8" stop-opacity=".95"/><stop offset="1" stop-color="#fff1b8" stop-opacity="0"/></radialGradient>
+        <linearGradient id="ldw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe7a3"/><stop offset="1" stop-color="#f29a3a"/></linearGradient>
+      </defs>
+      <rect width="400" height="700" fill="url(#lds)"/>
+      <circle cx="200" cy="300" r="170" fill="url(#ldg)"/>
+      <path d="M0 470c60-40 120-50 200-30s140 10 200-20v280H0z" fill="#5a2230"/>
+      <g fill="#3a1520"><path d="M-10 520c30-110 60-170 100-200 20 90 10 150 20 210z"/><path d="M290 530c10-60 30-120 60-170 30 60 50 120 70 170z"/></g>
+      <g transform="translate(70 360)">
+        <rect x="0" y="40" width="260" height="190" rx="6" fill="#3d1a14"/>
+        <path d="M-12 44 130 -6 272 44z" fill="#2a100d"/>
+        <path d="M-6 44h274v18H-6z" fill="#c0442f"/><path d="M20 44l14 18M60 44l14 18M100 44l14 18M140 44l14 18M180 44l14 18M220 44l14 18" stroke="#f3e7c9" stroke-width="9" opacity=".85"/>
+        <rect x="22" y="84" width="120" height="110" rx="6" fill="url(#ldw)"/>
+        <path d="M82 84v110M22 138h120" stroke="#3d1a14" stroke-width="5"/>
+        <g fill="#8a3a22"><rect x="30" y="160" width="8" height="30"/><rect x="40" y="154" width="8" height="36"/><rect x="50" y="162" width="8" height="28"/><rect x="96" y="158" width="8" height="32"/><rect x="106" y="152" width="8" height="38"/><rect x="116" y="162" width="8" height="28"/></g>
+        <rect x="170" y="100" width="64" height="130" rx="4" fill="#2a100d"/><rect x="178" y="108" width="48" height="122" rx="3" fill="url(#ldw)" opacity=".9"/>
+        <rect x="70" y="14" width="120" height="22" rx="4" fill="#2a100d" stroke="#f4c95a" stroke-width="2"/><text x="130" y="30" text-anchor="middle" font-family="Georgia,serif" font-size="13" font-weight="700" fill="#f6e3b0">LIBRERÍA</text>
+      </g>
+      <g transform="translate(60 120)" opacity=".95"><path d="M20 0c-18 0-32 14-32 32 18 0 32-14 32-32z" fill="#f4a24a"/><path d="M300 70c-14 0-26 12-26 26 14 0 26-12 26-26z" fill="#e3b04b"/><path d="M240 10c-10 0-18 8-18 18 10 0 18-8 18-18z" fill="#c0442f"/><path d="M120 60c-12 0-22 10-22 22 12 0 22-10 22-22z" fill="#d9792f"/></g>
+    </svg>
+  </div>
+  <div class="ld-shade"></div>
+  <div class="ld-logofull" aria-hidden="true"><img class="lgf-img" src="arte/logo/icono-pantalla.webp" alt=""></div>
+  <div class="ld-leaves" aria-hidden="true"><span style="left:3%;animation-delay:0s;animation-duration:6s;--s:0.7"></span><span style="left:10.3%;animation-delay:0.9s;animation-duration:7s;--s:0.95"></span><span style="left:17.6%;animation-delay:1.8s;animation-duration:8s;--s:1.2"></span><span style="left:24.9%;animation-delay:2.7s;animation-duration:9s;--s:1.45"></span><span style="left:32.2%;animation-delay:3.6s;animation-duration:10s;--s:0.7"></span><span style="left:39.5%;animation-delay:4.5s;animation-duration:6s;--s:0.95"></span><span style="left:46.8%;animation-delay:5.4s;animation-duration:7s;--s:1.2"></span><span style="left:54.1%;animation-delay:6.3s;animation-duration:8s;--s:1.45"></span><span style="left:61.4%;animation-delay:0.20000000000000018s;animation-duration:9s;--s:0.7"></span><span style="left:68.7%;animation-delay:1.0999999999999996s;animation-duration:10s;--s:0.95"></span><span style="left:76%;animation-delay:2s;animation-duration:6s;--s:1.2"></span><span style="left:83.3%;animation-delay:2.9000000000000004s;animation-duration:7s;--s:1.45"></span><span style="left:90.6%;animation-delay:3.8000000000000007s;animation-duration:8s;--s:0.7"></span><span style="left:97.89999999999999%;animation-delay:4.700000000000001s;animation-duration:9s;--s:0.95"></span></div>
+  <div class="ld-diary" aria-hidden="true"><div class="ld-page"><div class="dy-bind"></div><h2 class="dy-day"></h2><div class="dy-body"></div><p class="dy-sign"></p></div></div>
+  <p class="ld-hint" hidden></p>
+  <div class="ld-bottom">
+    <p class="ld-title">Mi librería</p>
+    <p class="ld-sub" hidden></p>
+    <div class="ld-bar"><i></i></div>
+    <p class="ld-text">Eligiendo el próximo libro…</p>
+    <button type="button" class="ld-next" hidden>Pasar al siguiente día ▸</button>
+  </div>
+</div>
+<script>window.APP = { name: 'Mi librería de barrio', short: 'Mi librería', tagline: 'libros, café y barrio' };</script>
+<script src="./src/boot.js"></script>
+<canvas id="c"></canvas>
+<div id="bubbles"></div>
+<header id="hud"></header>
+<button type="button" id="passBtn" data-act="openPass" aria-label="Pase de temporada"></button>
+<div id="camtools">
+  <button type="button" id="rotL" aria-label="Girar a la izquierda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/></svg></button>
+  <button type="button" id="rotR" aria-label="Girar a la derecha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-3-6.2"/><path d="M20 4v5h-5"/></svg></button>
+  <button type="button" id="zoomIn" aria-label="Acercar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button type="button" id="zoomOut" aria-label="Alejar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+  <button type="button" id="recenter" aria-label="Centrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
+  <button type="button" id="sun" aria-label="Día o noche"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7 7 17M17 7l1.7-1.7"/></svg></button>
+</div>
+<button type="button" id="backshop" hidden>← Volver a la tienda</button>
+<div id="serve" hidden></div>
+<div id="dock">
+  <nav id="bar" aria-label="Secciones">
+    <section id="panel"></section>
+    <div id="icons"></div>
+  </nav>
+</div>
+<div id="phone" hidden>
+  <div class="ph-bg" data-act="closePhone"></div>
+  <div class="ph-device">
+    <div class="ph-island"></div>
+    <div class="ph-screen" id="phScreen"></div>
+    <button type="button" class="ph-home" data-act="phoneHome" aria-label="Inicio"></button>
+  </div>
+</div>
+<div id="dlg" hidden>
+  <div class="dlg-scrim"></div>
+  <img id="dlgL" class="dlg-char left" alt="">
+  <img id="dlgR" class="dlg-char right" alt="">
+  <div class="dlg-box"><span class="dlg-name"></span><p class="dlg-text"></p><div class="dlg-opts"></div><span class="dlg-hint" hidden>Toca para continuar ▸</span></div>
+</div>
+<div id="intro" hidden><div class="in-cap"><small></small><b></b></div><button type="button" id="introSkip">Saltar ▸</button></div>
+<div id="coach" hidden>
+  <div class="co-spot"></div>
+  <div class="co-card"><img class="co-face" alt="" src="arte/retratos/anselmo-neutra.webp"><div class="co-body"><b>Don Anselmo · Tutorial <em class="co-n"></em></b><p></p><div class="co-btns"><button type="button" class="co-skip">Saltar tutorial</button><button type="button" class="co-next">Siguiente</button></div></div></div>
+</div>
+<button type="button" id="openShopBtn" data-act="open" hidden>Abrir tienda</button>
+<div id="menu" hidden></div>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
+<div id="wipe"></div>
+<div id="layer" hidden></div>
+<div id="fade"><b>Día 1</b></div>
+<script type="module" src="./src/app.js"></script>
+<script>
+  // Sin conexión: tras la primera carga la aplicación se guarda en el dispositivo
+  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    addEventListener('load', function () { navigator.serviceWorker.register('./sw.js').catch(function () {}); });
+  }
+</script>
+</body>
+</html>
