@@ -137,6 +137,20 @@ export function cyl(rt, rb, h, mat, seg = 28) { const m = new THREE.Mesh(new THR
 export function cylAt(parent, rt, rb, h, mat, x, yb, z, seg) { const m = cyl(rt, rb, h, mat, seg); m.position.set(x, yb + h / 2, z); parent.add(m); return m; }
 export function sph(r, mat, sx = 1, sy = 1, sz = 1) { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 12), mat); m.scale.set(sx, sy, sz); m.castShadow = m.receiveShadow = true; return m; }
 export function shade(g) { g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return g; }
+// Sombra de contacto: una mancha suave y oscura bajo el mueble o la persona, para que se apoye en el suelo
+const aoCache = {};
+export function contactShadow(w, d, strength = .5, round = false) {
+  const key = (round ? 'r' : 'b') + strength;
+  aoCache[key] ??= canvasTex(128, 128, (g, W, H) => {
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = 'rgba(0,0,0,1)'; g.shadowColor = 'rgba(0,0,0,1)'; g.shadowBlur = 22;
+    if (round) { g.beginPath(); g.ellipse(W / 2, H / 2, W * .3, H * .3, 0, 0, 7); g.fill(); }
+    else { const m = W * .2; g.beginPath(); g.roundRect(m, m, W - m * 2, H - m * 2, 12); g.fill(); }
+  });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: aoCache[key], transparent: true, opacity: strength, depthWrite: false, color: '#1a0f08' }));
+  m.rotation.x = -Math.PI / 2; m.position.y = .013; m.renderOrder = 1; m.userData.ownMat = false; m.userData.ao = true;
+  return m;
+}
 export function disposeTree(root) {
   root.traverse((o) => { if (o.geometry && !o.geometry.userData.keep) o.geometry.dispose(); if (o.userData.ownMat) o.material.dispose?.(); });
 }

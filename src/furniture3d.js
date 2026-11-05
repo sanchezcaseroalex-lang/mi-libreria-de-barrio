@@ -150,6 +150,8 @@ function armchair(f) {
   boxAt(g, .86, .3, .8, c, 0, .16, 0, .09); boxAt(g, .72, .15, .62, c2, 0, .44, .06, .07);
   boxAt(g, .88, .74, .22, c, 0, .22, -.3, .1); boxAt(g, .2, .48, .76, c, -.37, .2, 0, .09); boxAt(g, .2, .48, .76, c, .37, .2, 0, .09);
   [[-.34, -.32], [.34, -.32], [-.34, .32], [.34, .32]].forEach(([x, z]) => cylAt(g, .04, .03, .16, mDark, x, 0, z, 10));
+  for (let i = 0; i < 3; i++) { const bt = sph(.02, M('#a87420', .6)); bt.position.set(-.2 + i * .2, .5, -.185); g.add(bt); }
+  boxAt(g, .72, .012, .012, M('#a87420', .9), 0, .59, .35, 0);
   const pil = box(.3, .28, .1, M('#a2453a', .95), .06); pil.position.set(-.2, .74, -.14); pil.rotation.set(-.3, .3, .2); g.add(pil);
   const bl = box(.6, .05, .45, M('#e8d6b0', .95), .02); bl.position.set(.15, .92, -.02); bl.rotation.z = .05; g.add(bl);
   for (let i = 0; i < 4; i++) boxAt(g, .6, .05, .03, M('#a2453a', .95), .15, .905, -.17 + i * .1, .005).rotation.z = .05;
@@ -164,6 +166,10 @@ function sofa() {
   const p1 = box(.3, .28, .1, M('#e0a93b', .95), .06); p1.position.set(-.6, .74, -.12); p1.rotation.set(-.3, .2, .15); g.add(p1);
   const p2 = box(.3, .28, .1, M('#c8566b', .95), .06); p2.position.set(.5, .74, -.12); p2.rotation.set(-.3, -.25, -.1); g.add(p2);
   const bl = box(.7, .05, .5, M('#f1dfb9', .95), .02); bl.position.set(.5, .6, .12); bl.rotation.set(.05, .3, .05); g.add(bl);
+  // botones del respaldo, costuras y patas con puntera
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) { const bt = sph(.022, M('#3b6a60', .6)); bt.position.set(-.64 + i * .43, .36 + j * .2, -.205); g.add(bt); }
+  [-.46, .46].forEach((sx) => { boxAt(g, .9, .012, .012, M('#3b6a60', .9), sx, .59, .4, 0); boxAt(g, .012, .012, .66, M('#3b6a60', .9), sx - .45, .59, .07, 0); });
+  [[-.85, -.34], [.85, -.34], [-.85, .34], [.85, .34]].forEach(([x, z]) => cylAt(g, .045, .045, .015, M('#d9b24a', .3, .7), x, .12, z, 10));
   return shade(g);
 }
 
@@ -280,6 +286,8 @@ function rug(f) {
   const tex = RUG_SKIN[f.skin] ?? (hashStr(f.uid) % 2 ? rugTexB : rugTexA);
   const m = new THREE.Mesh(new THREE.PlaneGeometry(1.86, 1.86), MT(tex, 1)); m.rotation.x = -Math.PI / 2; m.position.y = .014; m.receiveShadow = true; g.add(m);
   const e = box(1.9, .012, 1.9, M('#5a3a2a', 1), .004); e.position.y = .006; g.add(e);
+  // flecos en los dos extremos
+  [-1, 1].forEach((s) => { for (let k = 0; k < 24; k++) { const fr = box(.012, .006, .09, M('#efe0c0', 1), .002); fr.position.set(-.9 + k * .0782, .012, s * .97); g.add(fr); } });
   return g;
 }
 function coffeeCorner(f, ctx) {

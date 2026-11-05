@@ -1,7 +1,7 @@
 // Mundo 3D de la librería: sala, paredes y suelo personalizables, muebles, almacén, gente, cámara y entrada táctil.
 import {
   THREE, M, MT, MG, mWalnut, mOak, mPine, mDark, mBrass, mPage, canvasTex, floorTex, wallTex, FLOORS, WALLS,
-  box, boxAt, cyl, cylAt, sph, shade, disposeTree, hashStr, mulberry32, displayBook, lyingBook, coverTexture, spineBook,
+  box, boxAt, cyl, cylAt, sph, shade, disposeTree, hashStr, mulberry32, contactShadow, displayBook, lyingBook, coverTexture, spineBook,
 } from './kit3d.js';
 import { buildFurniture, itemMesh } from './furniture3d.js';
 import { buildTown } from './town3d.js';
@@ -87,6 +87,14 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
 
   /* luces */
   const hemi = new THREE.HemisphereLight('#fff1d6', '#7a5640', 1.15); scene.add(hemi);
+  // entorno suave (cielo cálido arriba, madera abajo) para que barnices, latón y cristal reflejen algo
+  try {
+    const envScene = new THREE.Scene();
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(20, 24, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, uniforms: {}, vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'varying vec3 vP; void main(){ float h = vP.y*.5+.5; vec3 top = vec3(1.0,.93,.8); vec3 mid = vec3(.85,.72,.55); vec3 bot = vec3(.32,.22,.15); vec3 c = h > .5 ? mix(mid, top, (h-.5)*2.0) : mix(bot, mid, h*2.0); gl_FragColor = vec4(c,1.0); }' }));
+    envScene.add(dome);
+    [[8, 6, 6], [-8, 7, 4], [0, 9, -8]].forEach(([x, y, z]) => { const l = new THREE.Mesh(new THREE.PlaneGeometry(6, 3), new THREE.MeshBasicMaterial({ color: '#fff6e0', side: THREE.DoubleSide })); l.position.set(x, y, z); l.lookAt(0, 0, 0); envScene.add(l); });
+    const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromScene(envScene, .04).texture; scene.environmentIntensity = .13; pm.dispose();
+  } catch { /* sin entorno */ }
   const sun = new THREE.DirectionalLight('#ffe2b0', 2.2);
   sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -.0005; sun.shadow.normalBias = .03; sun.shadow.radius = 4;
   scene.add(sun, sun.target);
@@ -223,6 +231,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       if (b - a < .01) return;
       if (info.wain) { boxAt(slabs, b - a, .96, .05, info.wainMat, (a + b) / 2, 0, .025, 0); boxAt(slabs, b - a, .06, .09, mOak, (a + b) / 2, .96, .045, .01); }
       boxAt(slabs, b - a, .13, .07, mDark, (a + b) / 2, 0, .035, .01);
+      boxAt(slabs, b - a, .14, .09, M('#f3e9d2', .85), (a + b) / 2, WALL_H - .14, .045, .01);   // cornisa
     });
     const decor = new THREE.Group(); slabs.add(decor);
     parent.add(slabs, fixed);
@@ -329,6 +338,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       const root = buildFurniture(f, lightCtx);
       root.position.set(f.x + d.w / 2, 0, f.y + d.h / 2); root.rotation.y = ROT_Y[f.rot ?? 0];
       root.userData.uid = f.uid; root.userData.type = f.type;
+      if (!FURN[f.type].floor) { const ao = contactShadow(d.w + .35, d.h + .35, f.type === 'wall' || f.type === 'wallh' || f.type === 'wallc' ? .3 : .5); ao.rotation.z = -(ROT_Y[f.rot ?? 0] ?? 0); root.add(ao); }
       root.traverse((o) => { if (o.isMesh) o.userData.furnUid = f.uid; });
       if (root.userData.anim) anims.push(root.userData.anim);
       furnRoot.add(root);
@@ -351,6 +361,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
     const root = room === 'store' ? storeRoot : room === 'town' ? (townRoot ?? shopRoot) : shopRoot;
     root.add(p); p.position.set(cell[0] + .5, 0, cell[1] + .5); p.rotation.y = rot; p.userData.look = look;
     if (withBubble) { const el = document.createElement('div'); el.className = 'bubble3d'; el.hidden = true; bubblesEl.append(el); p.userData.bubble = el; }
+    { const ao = contactShadow(.7, .7, .45, true); ao.position.y = .015; p.add(ao); p.userData.aoMesh = ao; }
     p.traverse((o) => { if (o.isMesh) o.userData.personRef = p; });
     people.add(p); return p;
   }
@@ -455,7 +466,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       const chair = sp.f, d = dims(chair.type, chair.rot ?? 0);
       const p = spawn(n.person, [0, 0], ROT_Y[chair.rot ?? 0], false);
       p.position.set(chair.x + d.w / 2 + sp.dx, .5, chair.y + d.h / 2 + sp.dz);   // las caderas sobre el cojín (a .59 de altura)
-      p.userData.faceT = null; sitPerson(p, true); nookPs.push(p);
+      p.userData.faceT = null; sitPerson(p, true); nookPs.push(p); if (p.userData.aoMesh) p.userData.aoMesh.visible = false;
       const book = displayBook(BOOK[n.bookId ?? 'alas'] ?? BOOKS[0], .2, .28, .04); book.scale.setScalar(1.25); book.rotation.x = -.8; book.position.set(0, .3, .2); p.userData.hold.add(book); p.userData.hold.position.set(0, 0, 0);   // el libro en las manos, a la altura del pecho
     });
   }
