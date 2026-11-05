@@ -477,3 +477,25 @@ body.intro #openShopBtn, body.inmenu #openShopBtn, body.editing #openShopBtn { d
 .picker .warn { margin: 6px 0; padding: 6px 10px; border-radius: 10px; background: #f7c9b8; color: #8a2f1a; font: 700 13px var(--sans); }
 
 .bx-foot .bx-all { flex: none; min-height: 32px; padding: 4px 10px; font-size: 12px; white-space: normal; text-align: left; max-width: 38%; line-height: 1.15; }
+
+/* ordenador del mostrador */
+.pc input { width: 100%; box-sizing: border-box; min-height: 40px; padding: 6px 12px; border: 2px solid #38211a; border-radius: 12px; background: #fffaf0; font: 600 14px var(--sans); margin-bottom: 8px; }
+#pcList { max-height: 44vh; overflow-y: auto; margin-bottom: 10px; }
+.pc-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px dashed rgba(56, 33, 26, .22); }
+.pc-row .t { flex: 1; min-width: 0; line-height: 1.2; } .pc-row .t b { font: 700 13px var(--serif); display: block; } .pc-row .t small { color: var(--muted); }
+.pc-row .n { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font: 700 11.5px var(--sans); }
+.pc-row .n .out { color: #b8402f; } .pc-row .n .en { color: #2a7a9a; } .pc-row.none { opacity: .75; }
+
+.bk-loan .ts-btn { display: block; width: 100%; margin-top: 8px; text-align: left; }
+.bk-loan .ts-btn:disabled { opacity: .45; }
+
+/* escaparate */
+.wgrid { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; padding: 10px; border-radius: 14px; background: linear-gradient(#e9dcc0, #d9c49c); border: 3px solid #5a3827; }
+.wrow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding-bottom: 6px; border-bottom: 5px solid #8a5a3a; }
+.wslot { min-height: 68px; display: grid; place-items: center; border: 2px dashed rgba(56, 33, 26, .35); border-radius: 10px; background: rgba(255, 250, 240, .55); cursor: pointer; padding: 2px; }
+.wslot.on { border-style: solid; border-color: transparent; background: none; }
+.wslot .wplus { font: 700 24px var(--sans); color: rgba(56, 33, 26, .4); }
+.wi { font-size: 30px; line-height: 1; }
+.wlist { max-height: 46vh; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; }
+.wi-it { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; border: 2px solid #38211a; border-radius: 12px; background: #fffaf0; cursor: pointer; text-align: center; }
+.wi-it b { font: 700 11.5px/1.15 var(--serif); } .wi-it small { color: var(--muted); font: 600 10.5px var(--sans); }

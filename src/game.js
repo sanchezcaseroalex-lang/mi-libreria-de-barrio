@@ -88,6 +88,7 @@ export function buyFurniture(s, type) {
   const f = { uid: uid(), type, x: null, y: null };
   if (type === 'shelf') f.rows = [[], [], []];
   if (type === 'table') f.books = [];
+  if (type === 'escaparate') f.slots = Array(WIN_SLOTS).fill(null);
   s.furniture.push(f);
   return null;
 }
@@ -326,8 +327,9 @@ export function startDay(s) {
   s.trend = s.trend.filter((t) => t.until >= s.day);
   if (s.trend.length === 0 && Math.random() < 0.5) s.trend.push({ id: pick(availableBooks(s)).id, until: s.day + 2 });
   s.weather = Math.random() < 0.28 ? 'lluvia' : Math.random() < 0.2 ? 'nublado' : 'sol';
-  const n = clamp(3 + s.level + Math.floor(s.followers / 60) + Math.floor(s.rep / 60) - (s.weather === 'lluvia' ? 1 : 0), 3, 13);
+  let n = clamp(3 + s.level + Math.floor(s.followers / 60) + Math.floor(s.rep / 60) - (s.weather === 'lluvia' ? 1 : 0), 3, 13);
   const bag = [];
+  n += windowBoost(s);
   s.queue = Array.from({ length: n }, () => randomRequest(s, bag));
   if (s.settings?.hard) s.queue.forEach((c) => { c.tries = 1; });
   // Eventos (club de lectura, firma de autor): hace falta una sala donde recibir a la gente (hoy la Sala de lectura; luego la cafetería)
@@ -376,6 +378,11 @@ export const GOODS = [
   { id: 'vela', name: 'Vela aromática', one: 'una vela aromática', price: 14, cost: 6, level: 4, emoji: '🕯️' },
   { id: 'tote', name: 'Tote bag', one: 'una tote bag', price: 12, cost: 5, level: 5, emoji: '👜' },
   { id: 'poster', name: 'Póster', one: 'un póster', price: 10, cost: 4, level: 6, emoji: '🖼️' },
+  // figuritas: producto nuevo, se venden y también lucen en el escaparate
+  { id: 'fig_dragon', name: 'Dragoncito de resina', one: 'un dragoncito', price: 28, cost: 12, level: 6, emoji: '🐉', fig: true },
+  { id: 'fig_gato', name: 'Gato lector', one: 'un gato lector', price: 22, cost: 9, level: 6, emoji: '🐱', fig: true },
+  { id: 'fig_buho', name: 'Búho sabio', one: 'un búho sabio', price: 24, cost: 10, level: 7, emoji: '🦉', fig: true },
+  { id: 'fig_mago', name: 'Mago de bolsillo', one: 'un mago de bolsillo', price: 30, cost: 13, level: 8, emoji: '🧙', fig: true },
 ];
 // Lectores electrónicos de marcas inventadas: precio de venta y coste para ti
 export const EREADERS = [
@@ -386,6 +393,28 @@ export const EREADERS = [
 ];
 export const ALL_GOODS = [...GOODS, ...EREADERS];
 export const GOOD = Object.fromEntries(ALL_GOODS.map((g) => [g.id, g]));
+/* ---------- Escaparate: huecos libres; lo que pones no se gasta, pero tienes que tenerlo ---------- */
+
+export const WIN_SLOTS = 12;
+export function windowOwned(s, key) {
+  const [k, id] = String(key).split(':');
+  if (k === 'b') return (s.storage[id] ?? 0) + (onDisplay(s).get(id) ?? 0) > 0;
+  return (s.goods?.[id] ?? 0) > 0;
+}
+export function setWindow(s, uidv, i, key) {
+  const f = s.furniture.find((x) => x.uid === uidv);
+  if (!f || f.type !== 'escaparate') return 'Eso no es un escaparate.';
+  f.slots ??= Array(WIN_SLOTS).fill(null);
+  if (key && !windowOwned(s, key)) return 'No tienes ese artículo.';
+  f.slots[i] = key || null;
+  return null;
+}
+export function pruneWindow(s) {
+  for (const f of s.furniture) if (f.type === 'escaparate' && f.slots) f.slots = f.slots.map((k) => (k && windowOwned(s, k) ? k : null));
+}
+export const windowFilled = (s) => placed(s.furniture).filter((f) => f.type === 'escaparate').reduce((n, f) => n + (f.slots ?? []).filter(Boolean).length, 0);
+export const windowBoost = (s) => Math.min(3, Math.floor(windowFilled(s) / 4));   // cada 4 artículos expuestos, un cliente más al día (máx. 3)
+
 export const hasStand = (s) => placed(s.furniture).some((f) => f.type === 'ereader');
 export const goodStock = (s, id) => s.goods?.[id] ?? 0;
 export const goodUnlocked = (s, g) => (g.color ? hasStand(s) : s.level >= g.level);
@@ -419,6 +448,22 @@ export function upsellFor(s) {
   const lacking = unlocked.filter((g) => goodStock(s, g.id) <= 0);
   if (lacking.length && Math.random() < 0.5) { const g = lacking[Math.floor(Math.random() * lacking.length)]; s.missedGoods ??= {}; s.missedGoods[g.id] = (s.missedGoods[g.id] ?? 0) + 1; return { item: g, missing: true }; }
   return null;
+}
+
+/* ---------- Compra directa: el cliente coge un libro de la estantería y paga sin hablar ---------- */
+
+export function directSale(s, bookId) {
+  const book = BOOK[bookId];
+  const place = book && takeCopy(s, bookId);
+  if (!place) return 0;
+  const price = book.price;
+  s.money += price;
+  s.today.sales++; s.today.revenue += price; s.today.direct = (s.today.direct ?? 0) + 1;
+  s.soldBy ??= {}; s.soldBy[bookId] = (s.soldBy[bookId] ?? 0) + 1;
+  s.stats ??= { sold: 0, regulars: {} }; s.stats.sold++;
+  s.rep += 1; addPts(s, 5); gainXp(s, 6);
+  maybeReview(s, book, 4);
+  return price;
 }
 
 /* ---------- Mensajes de clientes (app del teléfono) ---------- */
@@ -761,12 +806,38 @@ export const IVA_LIBROS = 0.04;   // IVA superreducido de los libros en España;
 const round2 = (n) => Math.round(n * 100) / 100;
 export const rentFor = (s) => Math.round(6 + 2 * s.level + 6 * s.expansions.length);   // alquiler y suministros por día
 
+/* ---------- Préstamo del banco: dinero ahora, cuota cada día ---------- */
+
+export const LOAN_LEVEL = 3, LOAN_RATE = 0.1;   // desde el nivel 3, con un 10 % de interés
+export const LOANS = [{ amount: 500, days: 10 }, { amount: 1000, days: 14 }, { amount: 2000, days: 20 }];
+export const loanInfo = (L) => { const total = Math.round(L.amount * (1 + LOAN_RATE)); return { total, daily: Math.ceil(total / L.days) }; };
+export function takeLoan(s, i) {
+  const L = LOANS[i];
+  if (!L) return 'Ese préstamo no existe.';
+  if (s.loan) return 'Ya tienes un préstamo: devuélvelo antes de pedir otro.';
+  if (s.level < LOAN_LEVEL) return `El banco te dará un préstamo a partir del nivel ${LOAN_LEVEL}.`;
+  const { total, daily } = loanInfo(L);
+  s.loan = { principal: L.amount, owed: total, daily, day: s.day };
+  s.money = round2(s.money + L.amount);
+  return null;
+}
+export function repayLoan(s) {
+  const l = s.loan;
+  if (!l) return 'No debes nada.';
+  if (s.money < l.owed) return 'No te llega el dinero para devolverlo todo.';
+  s.money = round2(s.money - l.owed);
+  s.loan = null;
+  return null;
+}
+
 function closeBooks(s) {
   const gross = s.today.revenue;
   const iva = round2(gross - gross / (1 + IVA_LIBROS));
   const rent = rentFor(s);
-  s.money = round2(s.money - iva - rent);
-  Object.assign(s.today, { gross, iva, rent, net: round2(gross + s.today.tips - iva - rent) });
+  let loan = 0;
+  if (s.loan) { loan = Math.min(s.loan.daily, s.loan.owed); s.loan.owed = round2(s.loan.owed - loan); if (s.loan.owed <= 0.005) s.loan = null; }   // la cuota se descuenta cada día al cerrar
+  s.money = round2(s.money - iva - rent - loan);
+  Object.assign(s.today, { gross, iva, rent, loan, net: round2(gross + s.today.tips - iva - rent - loan) });
 }
 
 export const eventsOn = (s) => s.expansions.includes('oeste') || s.expansions.includes('cafe');

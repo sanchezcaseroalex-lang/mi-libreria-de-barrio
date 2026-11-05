@@ -384,7 +384,8 @@ export function playerOptions(c, ctx = {}) {
   }
   if (c.parcel) return [{ id: 'give', text: 'Aquí tienes tu pedido, bien empaquetado.' }];
   if (c.type === 'title') {
-    if (ctx.have && !ctx.have(c.target)) {
+    const checked = !ctx.pc || c.talk.pcChecked;   // hasta que mires el ordenador (o vayas al almacén) no sabes si lo tienes
+    if (ctx.have && checked && !ctx.have(c.target)) {
       if (c.pickup) return [{ id: 'sorry', text: 'Lo siento… se me ha olvidado pedirlo.' }];
       return [
         { id: 'sorry', text: 'Ahora mismo no me queda, lo siento.' },
@@ -394,12 +395,13 @@ export function playerOptions(c, ctx = {}) {
     }
     const b0 = BOOK[c.target], out = [];
     if (b0.saga && b0.saga.n > 1 && !c.sequel && !c.pickup && !c.returnFor && !c.talk.asked.includes('prev')) out.push({ id: 'prev', text: '¿Te has leído el anterior de la saga?' });
-    if (c.talk.prevAsked && c.unaware && !c.returnFor && b0.saga) {
+    if (ctx.pc && !c.talk.pcChecked && !c.pickup) out.push({ id: 'pc', text: 'Déjame mirarlo en el ordenador.' });
+    if (c.talk.prevAsked && c.unaware && !c.returnFor && b0.saga && checked) {
       const first = firstOfSaga(b0), sg = BOOKS.filter((x) => x.saga?.id === b0.saga.id && x.saga.n <= b0.saga.n);
       if (!ctx.have || ctx.have(first.id)) out.push({ id: 'givefirst', text: `Empieza por el primero, «${first.title}», y cuando lo leas vuelves a por este.` });
       if (ctx.have && sg.every((x) => ctx.have(x.id))) out.push({ id: 'bundle', text: b0.saga.n === 2 ? 'Llévate el primero y el segundo juntos.' : `Llévate los ${sg.length} primeros tomos juntos.` });
     }
-    out.push({ id: 'go', text: c.talk.prevAsked && c.unaware ? 'Te traigo este igualmente, aunque no hayas leído el anterior.' : c.pickup ? '¡Claro, aquí lo tengo! Te lo traigo.' : '¡Claro! Ahora te lo traigo.' });
+    out.push({ id: 'go', text: c.talk.prevAsked && c.unaware ? 'Te traigo este igualmente, aunque no hayas leído el anterior.' : !checked ? 'Voy al almacén a buscarlo.' : c.pickup ? '¡Claro, aquí lo tengo! Te lo traigo.' : '¡Claro! Ahora te lo traigo.' });
     return out;
   }
   const book = BOOK[c.target];

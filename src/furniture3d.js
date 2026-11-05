@@ -291,9 +291,52 @@ function ereaderStand(f, ctx) {
   return shade(g);
 }
 
+/* ---------- Escaparate y sus artículos ---------- */
+
+function itemMesh(key) {
+  const g = new THREE.Group(), [kind, id] = key.split(':');
+  if (kind === 'b') { const bk = displayBook(BOOK[id], .2, .3, .04); bk.rotation.x = -.12; g.add(bk); return g; }
+  const colors = ['#d9566b', '#e0a93b', '#3a8a7a'];
+  switch (id) {
+    case 'marcapaginas': colors.forEach((c, i) => boxAt(g, .035, .16, .004, M(c, .6), (i - 1) * .05, 0, 0, .001)); break;
+    case 'libreta': boxAt(g, .14, .19, .022, M('#c8566b', .7), 0, 0, 0, .004); boxAt(g, .012, .19, .024, M('#2a2a2a', .6), .045, 0, 0, .001); break;
+    case 'vela': cylAt(g, .045, .045, .1, M('#f3e7c9', .8), 0, 0, 0, 16); cylAt(g, .004, .004, .02, M('#2a2a2a', .6), 0, .1, 0, 6); { const fl = sph(.011, MG('#ffcf6b', 1.6), 1, 1.6, 1); fl.position.set(0, .13, 0); g.add(fl); } break;
+    case 'tote': boxAt(g, .16, .18, .02, M('#efe3c8', .9), 0, 0, 0, .004); { const h = new THREE.Mesh(new THREE.TorusGeometry(.04, .005, 6, 14, Math.PI), M('#c9b08a', .9)); h.position.set(0, .18, 0); g.add(h); } break;
+    case 'poster': boxAt(g, .2, .28, .014, mDark, 0, 0, 0, .004); boxAt(g, .17, .25, .004, M('#e0a64a', .8), 0, .015, .008, .001); boxAt(g, .08, .08, .005, M('#3a6a82', .8), 0, .1, .011, .001); break;
+    case 'fig_dragon': { const b = sph(.05, M('#3f8a5a', .7), 1.1, .9, 1); b.position.y = .05; g.add(b); const h = sph(.03, M('#3f8a5a', .7)); h.position.set(.06, .1, 0); g.add(h); [-1, 1].forEach((s2) => { boxAt(g, .06, .05, .004, M('#2a6a46', .7), -.01, .07, s2 * .05, .001); }); const t = new THREE.Mesh(new THREE.ConeGeometry(.015, .08, 6), M('#3f8a5a', .7)); t.rotation.z = Math.PI / 2; t.position.set(-.09, .04, 0); g.add(t); } break;
+    case 'fig_gato': { const b = sph(.05, M('#d98a45', .8), 1, 1.1, 1); b.position.y = .05; g.add(b); const h = sph(.035, M('#d98a45', .8)); h.position.set(.01, .115, 0); g.add(h); [-1, 1].forEach((s2) => { const e = new THREE.Mesh(new THREE.ConeGeometry(.012, .025, 4), M('#d98a45', .8)); e.position.set(.01, .15, s2 * .02); g.add(e); }); } break;
+    case 'fig_buho': { const b = sph(.045, M('#8a5a3a', .8), 1, 1.3, 1); b.position.y = .06; g.add(b); [-1, 1].forEach((s2) => { const e = sph(.014, M('#fff6dc', .5)); e.position.set(.035, .09, s2 * .017); g.add(e); const p = sph(.006, M('#111', .5)); p.position.set(.047, .09, s2 * .017); g.add(p); }); } break;
+    case 'fig_mago': { const b = new THREE.Mesh(new THREE.ConeGeometry(.045, .1, 10), M('#3a4a8a', .8)); b.position.y = .05; g.add(b); const h = sph(.025, M('#f1c9a5', .8)); h.position.y = .115; g.add(h); const hat = new THREE.Mesh(new THREE.ConeGeometry(.03, .07, 8), M('#3a4a8a', .8)); hat.position.y = .17; g.add(hat); } break;
+    default: boxAt(g, .1, .1, .05, M('#c9b08a', .8), 0, 0, 0, .004);
+  }
+  return g;
+}
+
+function escaparate(f) {
+  const g = new THREE.Group(), W = 2.9, D = .5, H = 1.95;
+  boxAt(g, W, .08, D, mDark, 0, 0, 0, .02);                                  // zócalo
+  boxAt(g, W, H, .04, M('#5a3827', .9), 0, 0, -D / 2 + .02, .005);           // fondo
+  [-1, 1].forEach((s) => boxAt(g, .06, H, D, mWalnut, s * (W / 2 - .03), 0, 0, .01));  // laterales
+  boxAt(g, W, .12, D + .04, mWalnut, 0, H, 0, .02);                           // cornisa
+  const sign = canvasTex(256, 64, (c, w2, h2) => { c.fillStyle = '#3f6b66'; c.fillRect(0, 0, w2, h2); c.fillStyle = '#f3e7c9'; c.font = '700 34px Fraunces, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Escaparate', w2 / 2, h2 / 2 + 2); });
+  const sg = new THREE.Mesh(new THREE.PlaneGeometry(.9, .22), new THREE.MeshStandardMaterial({ map: sign })); sg.position.set(0, H + .14, D / 2 + .03); g.add(sg);
+  const tiers = [.08, .7, 1.32];
+  tiers.forEach((y) => boxAt(g, W - .1, .035, D - .04, mOak, 0, y, 0, .005));
+  const slots = f.slots ?? [];
+  slots.forEach((key, i) => {
+    if (!key) return;
+    const tier = Math.floor(i / 4), col = i % 4;
+    const m = itemMesh(key); if (!key.startsWith('b:')) m.scale.setScalar(1.7); m.position.set(-1.05 + col * .7, tiers[tier] + .035, .02); g.add(m);
+  });
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(W - .12, H - .1), new THREE.MeshStandardMaterial({ color: '#cfe8f0', transparent: true, opacity: .12, roughness: .1 }));
+  glass.position.set(0, H / 2 + .02, D / 2 + .005); g.add(glass);
+  const lp = new THREE.Object3D(); lp.position.set(0, 1.6, .2); g.add(lp);
+  return shade(g);
+}
+
 // Cada constructor devuelve un grupo con origen en el centro de la huella.
 export const BUILD = {
-  shelf, table: roundTable, counter, armchair, sofa, side: sideTable, lamp: floorLamp, plant, cat: catBed, rug, ereader: ereaderStand, coffee: coffeeCorner,
+  shelf, table: roundTable, counter, armchair, sofa, side: sideTable, lamp: floorLamp, plant, cat: catBed, rug, escaparate, ereader: ereaderStand, coffee: coffeeCorner,
 };
 
 export function buildFurniture(f, ctx) {

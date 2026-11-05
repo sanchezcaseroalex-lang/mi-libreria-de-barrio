@@ -8,7 +8,7 @@ import {
   newGame, ITEMS, NETWORKS, XP_LEVELS, availableBooks, cozy, storageCount, shelfFree, shelfSlots, containers, furnById,
   inventory, countOf, buyFurniture, placeFurniture, storeFurniture, rotateFurniture, placeBook, takeBack, autoPlace, onDisplay, sellable, buyItem,
   orderBooks, pendingOrders, openShop, offer, dismiss, nextCustomer, nextDay, createAccount, canPost, postPhoto, postVideo,
-  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
+  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, pruneWindow, setWindow, windowFilled, windowBoost, WIN_SLOTS, windowOwned, directSale, LOANS, LOAN_LEVEL, loanInfo, takeLoan, repayLoan, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
 } from './game.js';
 import { newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
 import { HERO_LOOK } from './people3d.js';
@@ -22,7 +22,7 @@ import { showBook3D } from './viewer.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = 'v17 · filtros del almacén';
+const BUILD = 'v18 · escaparate, banco y ordenador';
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -89,6 +89,7 @@ const ICONS = {
   armchair: '<path d="M5 18v-7a3 3 0 0 1 6 0v3h2v-3a3 3 0 0 1 6 0v7M3 18h18M7 18v3M17 18v3"/>',
   shelf: '<path d="M5 3v18M19 3v18M5 9h14M5 15h14M8 4v4M11 5v3M14 4v4M8 10v4M12 11v3M15 10v4"/>',
   lights: '<path d="M3 6c4 4 14 4 18 0M6 9v3M12 11v3M18 9v3"/>',
+  escaparate: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 10h18M3 15h18M8 10V8M12 15v-2M16 10V7"/>',
   ereader: '<rect x="7" y="3" width="10" height="15" rx="1.5"/><path d="M10 8h4M10 11h4M9 21h6"/>',
   coffee: '<path d="M5 9h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4zM16 10h2a2 2 0 0 1 0 4h-2M8 3c0 2 2 2 2 4M12 3c0 2 2 2 2 4"/>',
   lamp: '<path d="M8 3h8l2 8H6zM12 11v9M8 20h8"/>',
@@ -131,6 +132,7 @@ const world = createWorld($('#c'), $('#bubbles'), {
     if (h.kind === 'furn') {
       const f = furnById(S, h.uid);
       if (f && (f.type === 'shelf' || f.type === 'table')) furnSheet(h.uid);
+      else if (f && f.type === 'escaparate') windowSheet(h.uid);
     } else if (h.kind === 'box') boxTap(h.id);
     else if (h.kind === 'door') doorTap(h.to);
     else if (h.kind === 'stockShelf') shelfTap(h.idx);
@@ -161,7 +163,7 @@ function timeState() {
   return { t, weather: S.weather };
 }
 let crowdReady = false;
-function syncWorld() { world.sync(S, timeState()); world.setDoorsOpen(S.phase === 'serving' || (crowdReady && crowd.size > 0)); }
+function syncWorld() { pruneWindow(S); world.sync(S, timeState()); world.setDoorsOpen(S.phase === 'serving' || (crowdReady && crowd.size > 0)); }
 syncWorld();
 
 const dockEl = $('#dock');
@@ -404,7 +406,7 @@ function browseSpots() {
   };
   for (const f of placed(S.furniture)) {
     if (f.type === 'shelf') { const [dx, dz] = frontDir(f); frontCells(f).forEach((c) => add(c, [-dx, -dz])); }
-    else if (['table', 'cat', 'plant', 'coffee', 'ereader'].includes(f.type)) {
+    else if (['table', 'cat', 'plant', 'coffee', 'ereader', 'escaparate'].includes(f.type)) {
       for (const [c, r] of cellsOf(f)) for (const [dc, dr] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) add([c + dc, r + dr], [-dc, -dr]);
     }
   }
@@ -443,6 +445,33 @@ async function updateLine() {
   });
 }
 
+// Un curioso coge un libro de una estantería, va al mostrador y paga solo (sin conversación)
+async function directBuy(e, tok) {
+  const shown = [...onDisplay(S).keys()];
+  if (!shown.length || S.phase !== 'serving') return;
+  const id = pickOne(shown);
+  const spot = takeSpot();
+  if (spot) {
+    await routeTo(e.p, spot.cell, rnd(1.8, 2.3));
+    world.face(e.p, spot.face[0], spot.face[1]);
+    await sleep(rnd(900, 1600));
+    spotsTaken.delete(spot.key);
+  }
+  if (tok !== dayTok) return;
+  world.carry(e.p, id);
+  const cells = lineCells();
+  if (cells.length) await routeTo(e.p, cells[Math.min(line.length + 1, cells.length - 1)], 2.1);
+  await sleep(900);
+  if (tok !== dayTok) { world.carry(e.p, null); return; }
+  const price = directSale(S, id);
+  if (price) {
+    sfx('coin'); world.say(e.p, `Me lo llevo  +${price} €`, 'happy');
+    persist(); renderTop(); syncWorld();
+    await sleep(1500); world.say(e.p, '');
+  }
+  world.carry(e.p, null);
+}
+
 async function runShopper(e, tok) {
   crowd.add(e);
   let held = null;                                   // sitio de paseo que ocupa ahora (nadie más se pone encima)
@@ -471,6 +500,7 @@ async function runShopper(e, tok) {
       await e.done;
     } else {
       free();
+      if (e.ambient && tok === dayTok && S.level >= 2 && Math.random() < 0.4) await directBuy(e, tok);
       await exitShop(e);
     }
   } finally {
@@ -1068,7 +1098,7 @@ function playerSays(e, text, next, expr = 'neutra') {
 // Tu turno: eliges qué decir
 function hub(e) {
   const c = e.c;
-  const opts = playerOptions(c, { have: (id) => (S.storage[id] ?? 0) > 0, limit: S.settings.hard ? 2 : 3 });
+  const opts = playerOptions(c, { have: hasStock, pc: true, limit: S.settings.hard ? 2 : 3 });
   clearInterval(dlgTimer); dlgNext = null; dlgTyping = false;
   setImg(dlgR, heroImg('neutra'), heroBust());
   dlg.classList.add('right-on'); dlg.classList.remove('left-on');
@@ -1079,17 +1109,48 @@ function hub(e) {
     + '<button type="button" class="link" data-act="dismissCust">Lo siento, no puedo ayudarte</button>';
 }
 function startTalk(e) { dlgOpen(); clientSays(e, e.c.line, 'neutra', () => hub(e)); }
+/* ---------- Ordenador del mostrador: inventario sin ir al almacén ---------- */
+
+function pcRows(q) {
+  const have = sellable(S), route = {};
+  (S.orders ?? []).forEach((o) => { route[o.id] = (route[o.id] ?? 0) + o.qty; });
+  const ids = BOOKS.filter((b) => b.unlock <= S.level && (!q || norm(`${b.title} ${b.author}`).includes(norm(q)))).map((b) => b.id);
+  if (!ids.length) return '<p class="empty">No hay ningún libro con ese nombre.</p>';
+  return ids.map((id) => {
+    const e = have.get(id) ?? { shop: 0, store: 0 }, k = route[id] ?? 0, total = e.shop + e.store;
+    return `<div class="pc-row ${total ? '' : 'none'}"><span class="cv">${coverSVG(BOOK[id], 30, 45)}</span><div class="t"><b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small></div>
+      <div class="n">${total ? `<span>Tienda ${e.shop}</span><span>Almacén ${e.store}</span>` : '<span class="out">Agotado</span>'}${k ? `<span class="en">En camino ${k}</span>` : ''}</div></div>`;
+  }).join('');
+}
+function openInventory(e) {
+  const c = e.c, q0 = c.type === 'title' && BOOK[c.target] ? BOOK[c.target].title : '';
+  openSheet(`<div class="sheet-h"><h2>🖥 Ordenador del mostrador</h2></div>
+    <div class="pc"><p class="muted">Inventario de la librería. ${q0 ? `Buscando «${esc(q0)}».` : ''}</p>
+    <input type="search" data-pcq placeholder="Buscar por título o autor" value="${esc(q0)}">
+    <div id="pcList">${pcRows(q0)}</div>
+    <button type="button" class="btn primary wide" data-act="pcClose">Cerrar el ordenador</button></div>`);
+  $('.sheet-bg')?.removeAttribute('data-act');
+}
+
+// Vuelve a la conversación en el punto en que estaba (sin repetir lo que dijo el cliente)
+function resumeTalk(e) {
+  const c = e.c;
+  dlgOpen();
+  setImg(dlgL, `arte/retratos/${c.charId}-dudosa.webp`, e.bust);
+  dlg.classList.add('left-on');
+  hub(e);
+}
 function talkAgain(e, text, expr) { dlgOpen(); clientSays(e, text, expr, () => hub(e)); }
 
 const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
-const hasStock = (id) => (S.storage[id] ?? 0) > 0;
+const hasStock = (id) => (S.storage[id] ?? 0) + (onDisplay(S).get(id) ?? 0) > 0;   // almacén o expuesto: lo último que se usa es el de la estantería
 const isUnfillable = (c) => !c.pickup && !c.parcel && (isUnknown(c) || (c.type === 'title' && !hasStock(c.target)));
 
 function talkOpt(id) {
   const e = attending;
   if (!e) return;
   const c = e.c;
-  const opt = playerOptions(c, { have: hasStock, limit: S.settings.hard ? 2 : 3 }).find((o) => o.id === id);
+  const opt = playerOptions(c, { have: hasStock, pc: true, limit: S.settings.hard ? 2 : 3 }).find((o) => o.id === id);
   const said = opt?.text ?? '';
   if (id === 'go') { playerSays(e, said, () => { closeDialog(); talking = false; fetchBook(); }, 'contenta'); return; }
   if (id === 'give') {
@@ -1100,6 +1161,10 @@ function talkOpt(id) {
       persist();
       await finishCustomer(e, { sold: true, price: total, tip: 0, message: thanksLine(c) }, null);
     }, 'contenta');
+    return;
+  }
+  if (id === 'pc') {
+    playerSays(e, said, () => { closeDialog(); setTimeout(() => openInventory(e), 350); }, 'neutra');
     return;
   }
   if (id === 'bundle') {
@@ -1286,7 +1351,7 @@ async function cancelPick() {
   if (world.view !== 'shop') { world.setView('shop'); syncWorld(); placeHero(); world.hero.visible = true; }
   busy = false;
   talking = true;
-  if (attending) talkAgain(attending, attending.c.line, 'dudosa');
+  if (attending) { attending.c.talk.pcChecked = true; resumeTalk(attending); }
 }
 
 async function doDismiss(penalty = true) {
@@ -1541,20 +1606,55 @@ function showPicker() {
   const map = sellable(S);
   const allIds = [...map.keys()].sort((a, b) => BOOKS.findIndex((x) => x.id === a) - BOOKS.findIndex((x) => x.id === b));
   const slotsFor = () => stkApply(allIds).map((id) => {
-    const b = BOOK[id], e = map.get(id), out = e.store <= 0;
-    return `<button type="button" class="slot ${out ? 'out' : ''}" ${out ? 'disabled' : `data-act="pickBook" data-id="${id}"`}>${coverSVG(b, 78, 117)}<b>${esc(b.title)}</b>${b.saga ? `<small class="saga">${esc(sagaLabel(b))}</small>` : ''}${S.settings.hard ? '' : `<span class="tags">${tagChips(b.tags.slice(0, 2))}</span>`}${out ? '<small style="color:#f6ecd9">agotado</small>' : `<em>${e.store}</em>`}</button>`;
+    const b = BOOK[id], e = map.get(id), out = e.store + e.shop <= 0;
+    return `<button type="button" class="slot ${out ? 'out' : ''}" ${out ? 'disabled' : `data-act="pickBook" data-id="${id}"`}>${coverSVG(b, 78, 117)}<b>${esc(b.title)}</b>${b.saga ? `<small class="saga">${esc(sagaLabel(b))}</small>` : ''}${S.settings.hard ? '' : `<span class="tags">${tagChips(b.tags.slice(0, 2))}</span>`}${out ? '<small style="color:#f6ecd9">agotado</small>' : e.store > 0 ? `<em>${e.store}</em>` : '<small style="color:#f0c987">solo el expuesto</small>'}</button>`;
   }).join('') || '<p class="empty">Ningún libro coincide con ese filtro.</p>';
   const slots = slotsFor();
   stkRender = () => { const g = $('.shelfgrid'); if (g) g.innerHTML = slotsFor(); };
   openSheet(`<div class="sheet-h"><h2>Estantería del almacén</h2></div>
     <div class="picker"><button type="button" class="btn wide ghost" data-act="cancelPick">‹ Volver sin libro</button>
-    ${c.type === 'title' && !c.pickup && (S.storage[c.target] ?? 0) <= 0 ? `<p class="warn">⚠ No te quedan ejemplares de «${esc(BOOK[c.target].title)}».</p>` : ''}
+    ${c.type === 'title' && !c.pickup && !hasStock(c.target) ? `<p class="warn">⚠ No te quedan ejemplares de «${esc(BOOK[c.target].title)}».</p>` : ''}
     <p class="quote small">${esc(c.name)}: “${esc(c.line)}”</p>
     <p class="muted sub">Coge el libro que pide. Si te equivocas, el cliente te lo dirá.</p>
     ${stkToolsHTML()}
     <div class="shelfgrid">${slots}</div>
     <button type="button" class="btn wide ghost" data-act="cancelPick">Volver sin libro</button></div>`);
   $('.sheet-bg')?.removeAttribute('data-act');
+}
+
+/* ---------- Escaparate: huecos libres ---------- */
+
+function winCell(key) {
+  if (!key) return '<span class="wplus">+</span>';
+  const [k, id] = key.split(':');
+  return k === 'b' ? coverSVG(BOOK[id], 38, 57) : `<span class="wi">${GOOD[id]?.emoji ?? '📦'}</span>`;
+}
+function windowSheet(uidv) {
+  const f = furnById(S, uidv);
+  if (!f) return;
+  pruneWindow(S);
+  const slots = f.slots ?? Array(WIN_SLOTS).fill(null);
+  const rows = [2, 1, 0].map((r2) => `<div class="wrow">${[0, 1, 2, 3].map((c) => { const i = r2 * 4 + c; return `<button type="button" class="wslot ${slots[i] ? 'on' : ''}" data-act="winSlot" data-uid="${uidv}" data-i="${i}" aria-label="Hueco ${i + 1}">${winCell(slots[i])}</button>`; }).join('')}</div>`).join('');
+  openSheet(`${sheetHead('Escaparate')}
+    <p class="muted">Toca un hueco para poner lo que quieras: libros, complementos y figuritas. Lo que expones <b>no se gasta</b>, pero tienes que tenerlo en la tienda o en el almacén.</p>
+    <p class="note">Ahora luces <b>${windowFilled(S)}</b> artículos: atraes <b>+${windowBoost(S)}</b> ${windowBoost(S) === 1 ? 'cliente' : 'clientes'} al día. Cada 4 artículos, un cliente más (máximo 3).</p>
+    <div class="wgrid">${rows}</div>`);
+}
+function winItemsHTML(uidv, i) {
+  const q = norm(STK.q);
+  const goods = GOODS.filter((g) => (S.goods?.[g.id] ?? 0) > 0 && (!q || norm(g.name).includes(q))).map((g) => `<button type="button" class="wi-it" data-act="winPut" data-uid="${uidv}" data-i="${i}" data-key="g:${g.id}"><span class="wi">${g.emoji}</span><b>${esc(g.name)}</b><small>tienes ${S.goods[g.id]}</small></button>`).join('');
+  const have = sellable(S);
+  const ids = stkApply(BOOKS.filter((b) => ((have.get(b.id)?.shop ?? 0) + (have.get(b.id)?.store ?? 0)) > 0).map((b) => b.id));
+  const books = ids.map((id) => `<button type="button" class="wi-it" data-act="winPut" data-uid="${uidv}" data-i="${i}" data-key="b:${id}">${coverSVG(BOOK[id], 40, 60)}<b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small></button>`).join('');
+  return (goods || books) ? `${goods}${books}` : '<p class="empty">No hay nada que coincida. Compra complementos o libros en Pedidos.</p>';
+}
+function windowPick(uidv, i) {
+  stkRender = () => { const l = $('#winList'); if (l) l.innerHTML = winItemsHTML(uidv, i); };
+  openSheet(`${sheetHead(`Hueco ${i + 1}`)}
+    <button type="button" class="btn wide ghost" data-act="winPut" data-uid="${uidv}" data-i="${i}" data-key="">Dejar el hueco vacío</button>
+    ${stkToolsHTML()}
+    <div id="winList" class="wlist">${winItemsHTML(uidv, i)}</div>
+    <button type="button" class="btn wide" data-act="winBack" data-uid="${uidv}">‹ Volver al escaparate</button>`);
 }
 
 function furnSheet(uidv) {
@@ -1971,6 +2071,18 @@ function appAgenda() {
     ${sec('Pedidos online', web, 'Sin pedidos online.')}${sec('Por reponer', sold, 'Todo lo que vendes está en stock.')}${sec('Mensajes', msgs ? [`<div class="ag-it">Tienes <b>${msgs}</b> ${msgs === 1 ? 'mensaje' : 'mensajes'} por responder.</div>`] : [], 'Todo respondido.')}`);
 }
 
+function loanCard() {
+  const l = S.loan;
+  if (l) {
+    const days = Math.ceil(l.owed / l.daily);
+    return `<div class="bk-goal bk-loan"><b>Préstamo activo</b><small>Debes ${money2(l.owed)} · cuota de ${money(l.daily)} al día · te quedan unos ${days} ${days === 1 ? 'día' : 'días'}</small>
+      <button type="button" class="ts-btn" data-act="loanRepay" ${S.money >= l.owed ? '' : 'disabled'}>Devolver todo (${money2(l.owed)})</button></div>`;
+  }
+  if (S.level < LOAN_LEVEL) return `<div class="bk-goal bk-loan"><b>Préstamos</b><small>El banco te los ofrecerá a partir del nivel ${LOAN_LEVEL}.</small></div>`;
+  return `<div class="bk-goal bk-loan"><b>Pide un préstamo</b><small>Te ingresan el dinero ya y te descuentan una cuota al cerrar cada día (con un 10 % de interés). Solo uno a la vez.</small>
+    ${LOANS.map((L, i) => { const x = loanInfo(L); return `<button type="button" class="ts-btn" data-act="loanTake" data-i="${i}">${money(L.amount)} · ${money(x.daily)}/día durante ${L.days} días</button>`; }).join('')}</div>`;
+}
+
 function appBanco() {
   const h = (S.history ?? []).slice(-10);
   const max = Math.max(1, ...h.map((x) => Math.abs(x.profit)));
@@ -1981,7 +2093,7 @@ function appBanco() {
   const t = S.today;
   return gen('banco', 'Banco', `<div class="bk-bal"><small>Saldo</small><b>${money2(S.money)}</b></div>
     ${t ? `<div class="bk-today"><div><b>${t.sales}</b><small>ventas hoy</small></div><div><b>${money(t.revenue + (t.tips ?? 0))}</b><small>ingresado</small></div><div><b>${money(rentFor(S))}</b><small>alquiler diario</small></div></div>` : ''}
-    ${goal}<h4 class="bk-h">Beneficio por día</h4>${bars}${rows ? `<table class="bk-tab">${rows}</table>` : ''}
+    ${goal}${loanCard()}<h4 class="bk-h">Beneficio por día</h4>${bars}${rows ? `<table class="bk-tab">${rows}</table>` : ''}
     <p class="ag-empty">El IVA de los libros (4 %) y el alquiler se descuentan al cerrar cada día.</p>`);
 }
 
@@ -2043,6 +2155,7 @@ function showSummary() {
       ${s.tips ? `<tr><td>Propinas</td><td>+${money2(s.tips)}</td></tr>` : ''}
       <tr class="neg"><td>IVA de los libros (4 %)</td><td>−${money2(s.iva)}</td></tr>
       <tr class="neg"><td>Alquiler y suministros</td><td>−${money2(s.rent)}</td></tr>
+      ${s.loan ? `<tr class="neg"><td>Cuota del préstamo</td><td>−${money2(s.loan)}</td></tr>` : ''}
       <tr class="tot"><td>Te quedas</td><td>${money2(s.net)}</td></tr></table>
     <p class="muted small">Los libros llevan IVA superreducido: el precio que ves ya lo incluye. Los pedidos del día siguiente se pagan al encargarlos.</p>
     <p class="muted">${s.left ? `${s.left} ${s.left === 1 ? 'cliente se fue' : 'clientes se fueron'} sin comprar.` : 'Nadie se fue con las manos vacías.'}${s.reviews ? ` ${s.reviews} ${s.reviews === 1 ? 'reseña nueva' : 'reseñas nuevas'}.` : ''}</p>
@@ -2299,6 +2412,12 @@ const act = {
   replayIntro: () => { if (busy || S.phase === 'serving') { toast('Termina antes la jornada.'); return; } closeSheet(); runIntro(false); },
   creatorBack: () => { newFlow = false; introPending = false; world.stopPedestrians(); closeSheet(); document.body.classList.remove('intro'); S = prepare(stored() ?? newGame()); goShop(); showMenu(); },
   openPass: () => { openPass(); },
+  pcClose: () => { const e = attending; closeSheet(); if (!e) return; e.c.talk.pcChecked = true; dlgOpen(); clientSays(e, pickOne(['¿Qué tal? ¿Hay suerte?', 'Vale… ¿lo tienes?', 'Te espero, sin prisa.']), 'neutra', () => hub(e)); },
+  loanTake: ({ i }) => { const err = takeLoan(S, Number(i)); if (err) { toast(err); return; } sfx('coin'); persist(); renderTop(); renderPhone(); toast('Préstamo concedido: el dinero ya está en tu cuenta.'); },
+  loanRepay: () => { const err = repayLoan(S); if (err) { toast(err); return; } sfx('coin'); persist(); renderTop(); renderPhone(); toast('Has devuelto el préstamo.'); },
+  winSlot: ({ uid, i }) => windowPick(uid, Number(i)),
+  winPut: ({ uid, i, key }) => { const err = setWindow(S, uid, Number(i), key); if (err) { toast(err); return; } persist(); syncWorld(); windowSheet(uid); },
+  winBack: ({ uid }) => windowSheet(uid),
   upsell: ({ v }) => { const f = upRes; upRes = null; f?.(v === 'y'); },
   buyGood: ({ id, n }) => { const err = buyGood(S, id, Number(n) || 1); if (err) { toast(err); return; } sfx('coin'); persist(); renderTop(); renderPanel(); toast(`${GOOD[id].name} ×${Number(n) || 1} en el almacén.`); },
   edPick: ({ v }) => { closeSheet(); const r = edResolve; edResolve = null; r?.(v === 's'); },
@@ -2372,6 +2491,7 @@ document.addEventListener('input', (e) => {
     const sm = e.target.closest('.mn-row')?.querySelector('small'); if (sm) sm.textContent = `${e.target.value}\u00a0%`;
     return;
   }
+  if (e.target.dataset?.pcq != null) { const l = $('#pcList'); if (l) l.innerHTML = pcRows(e.target.value); return; }
   if (e.target.dataset?.stkq != null) { STK.q = e.target.value; stkRender?.(); return; }
   if (e.target.dataset?.notes != null) { S.notes = e.target.value; clearTimeout(window.__notesT); window.__notesT = setTimeout(persist, 400); return; }
   if (e.target.id === 'shopname') {
