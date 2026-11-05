@@ -22,7 +22,7 @@ import { showBook3D } from './viewer.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.20.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.21.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -72,7 +72,8 @@ let editing = false;
 let editTab = 'muebles';
 let selUid = null;
 let selPoster = null;
-const persist = () => { if (S.hero) save(S); };
+const TEST_MONEY = 1000000;
+const persist = () => { if (S.hero) { if (S.test) S.money = Math.max(S.money, TEST_MONEY); save(S); } };
 
 /* ---------- Iconos ---------- */
 
@@ -180,6 +181,7 @@ function updateShift() {
 /* ---------- Cabecera y barra inferior ---------- */
 
 function renderTop() {
+  if (S.test && S.money < TEST_MONEY) S.money = TEST_MONEY;   // modo pruebas: dinero que nunca se acaba
   const next = XP_LEVELS[S.level] ?? null;
   const prev = XP_LEVELS[S.level - 1];
   const pct = next ? Math.round(((S.xp - prev) / (next - prev)) * 100) : 100;
@@ -883,6 +885,7 @@ function openSettings() {
     <label class="fld">Nombre de la librería<input id="shopname" class="input" maxlength="28" value="${esc(S.shopName)}"></label>
     <label class="fld">Mensaje del felpudo<input id="doormatIn" class="input" maxlength="24" value="${esc(S.doormat)}" placeholder="Bienvenid@s"></label>
     <h3>Partida</h3>
+    <button type="button" class="btn wide ${S.test ? 'primary' : ''}" data-act="testMode" style="flex-direction:column;gap:2px">Modo pruebas: ${S.test ? 'ACTIVADO' : 'desactivado'}<small style="display:block;font-weight:600">Dinero ilimitado y nivel máximo (para probar todo)</small></button>
     <button type="button" class="btn wide" data-act="replayTut">Repetir el tutorial</button>
     <button type="button" class="btn wide" data-act="replayIntro">Ver la intro y la historia otra vez</button>
     <button type="button" class="btn wide" data-act="changeHero">Cambiar de personaje y de nombre</button>
@@ -2407,6 +2410,16 @@ const act = {
     persist(); applyHero(); closeSheet(); renderTop(); syncWorld();
     if (newFlow) { newFlow = false; world.stopPedestrians(); world.setTownName(S.shopName); world.setView('town'); runIntro(false); }
     else toast(`Ahora eres ${name}.`);
+  },
+  testMode: () => {
+    if (!S.hero) return;
+    S.test = !S.test;
+    if (S.test) {
+      const max = XP_LEVELS.length;
+      S.level = max; S.xp = Math.max(S.xp, XP_LEVELS[max - 1]); S.money = Math.max(S.money, TEST_MONEY); S.levelUps = [];
+      toast('Modo pruebas activado: nivel máximo y dinero ilimitado.');
+    } else toast('Modo pruebas desactivado. Conservas el nivel y el dinero que tengas.');
+    persist(); syncWorld(); renderTop(); renderPanel(); openSettings();
   },
   replayTut: () => { if (S.phase !== 'morning' || busy) { toast('Termina antes la jornada.'); return; } closeSheet(); panelOpen = false; renderPanel(); tutStart(); },
   replayIntro: () => { if (busy || S.phase === 'serving') { toast('Termina antes la jornada.'); return; } closeSheet(); runIntro(false); },
