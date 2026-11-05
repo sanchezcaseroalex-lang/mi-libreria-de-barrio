@@ -521,3 +521,11 @@ body.intro #openShopBtn, body.inmenu #openShopBtn, body.editing #openShopBtn { d
 
 .pill.pr { background: #ffe7a8; }
 .picker .slot small.pr { color: #ffe3a0; font: 800 11px var(--sans); }
+
+#videoBtn { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 112px); z-index: 7; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+#videoBtn[hidden] { display: none; }
+#recOv { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; gap: 12px; background: rgba(0,0,0,.35); color: #fff; font: 800 26px var(--sans); pointer-events: none; }
+#recOv .rec-dot { width: 18px; height: 18px; border-radius: 50%; background: #ff2d2d; animation: recblink 1s infinite; }
+#recOv i { font-style: normal; font-size: 64px; }
+@keyframes recblink { 50% { opacity: .2; } }
+.vid-card { text-align: center; } .vid-card b { font: 800 18px var(--serif); } .vid-card .stats { display: flex; justify-content: space-around; margin: 12px 0; } .vid-card .stats div { display: flex; flex-direction: column; } .vid-card .stats b { font-size: 22px; } .vid-card .stats span { color: var(--muted); font-size: 12px; }

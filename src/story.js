@@ -52,6 +52,34 @@ export const CHAPTERS = [
   },
 ];
 
+// Historias de temporada: una por mes. Cada capítulo es una meta y cierra con un diálogo del personaje de la temporada.
+export const SEASON_STORIES = {
+  lia: {
+    who: 'lia', whoName: 'Lía', title: 'Luces, cámara, libros',
+    chapters: [
+      { title: 'Una cara nueva', goal: 'Atiende a Lía 2 veces', target: 2, value: (s) => s.stats?.visits?.lia ?? 0, reward: 60,
+        lines: ['¡Hola otra vez! Perdona que te mire tanto: es que esta librería tiene un encanto…', 'Me llamo Lía y hago vídeos de libros en internet. Siempre busco sitios con alma.', 'Si sigue gustándome, igual os menciono. Toma, esto es de mi parte.'] },
+      { title: 'Se corre la voz', goal: 'Llega a 120 seguidores', target: 120, value: (s) => s.followers, reward: 100,
+        lines: ['¡Te he nombrado en mi canal y mis seguidores no paran de preguntar por ti!', 'Sé que has crecido mucho en las redes. Eso me hace pensar en algo más grande…', 'Pero antes, un detallito para la caja.'] },
+      { title: 'La propuesta', goal: 'Llega al nivel 6', target: 6, value: (s) => s.level, reward: 150,
+        lines: ['Nivel 6, ¿eh? Pues ya estás lista para lo que te voy a proponer.', '¿Y si hacemos una colaboración? Un vídeo en tu librería, con tu historia, tus libros y tu gato.', 'Te preparo un trípode para el almacén: cuando cierres, grabas tus propios vídeos. Lo tienes en el pase de temporada.', 'Y yo te enseño el truco: la luz lo es todo. ¡Ya verás!'] },
+      { title: 'Tu propio canal', goal: 'Publica 3 vídeos desde el almacén', target: 3, value: (s) => s.stats?.videos ?? 0, reward: 300, final: true,
+        lines: ['Tres vídeos y ya se nota que tienes ojo. ¡Mi comunidad te adora!', 'Hacer vídeos no va de números, va de contar por qué quieres a tu librería.', 'Gracias por dejarme ser parte de esto, {n}. Seguimos en contacto: siempre habrá un hueco para ti en mi canal.'] },
+    ],
+  },
+};
+export const seasonStory = (id) => SEASON_STORIES[id] ?? null;
+export const seasonChapterIdx = (s, id) => (s.seasonStory?.[id]?.chapter ?? 0);
+export const currentSeasonChapter = (s, id) => seasonStory(id)?.chapters[seasonChapterIdx(s, id)] ?? null;
+export function completeSeasonChapter(s, id) {
+  const st = seasonStory(id), c = currentSeasonChapter(s, id);
+  if (!st || !c || c.value(s) < c.target) return null;
+  s.seasonStory ??= {}; (s.seasonStory[id] ??= { chapter: 0 }).chapter++;
+  addPts(s, 40);
+  s.money = Math.round((s.money + c.reward) * 100) / 100;
+  return { ...c, who: st.who, whoName: st.whoName, index: seasonChapterIdx(s, id) };
+}
+
 export const initStory = (s) => { s.story ??= { chapter: 0, clues: [] }; s.stats ??= { sold: 0, regulars: {} }; };
 export const currentChapter = (s) => CHAPTERS[s.story.chapter] ?? null;
 export const chapterProgress = (s) => { const c = currentChapter(s); return c ? { value: Math.min(c.target, c.value(s)), target: c.target } : null; };

@@ -8,22 +8,22 @@ import {
   newGame, ITEMS, NETWORKS, XP_LEVELS, availableBooks, cozy, storageCount, shelfFree, shelfSlots, containers, furnById,
   inventory, countOf, buyFurniture, placeFurniture, storeFurniture, rotateFurniture, placeBook, takeBack, autoPlace, onDisplay, sellable, buyItem,
   orderBooks, pendingOrders, openShop, offer, dismiss, nextCustomer, nextDay, createAccount, canPost, postPhoto, postVideo,
-  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, canGift, giveGift, giftStock, discardFurniture, nudgeFurniture, pruneWindow, setWindow, windowFilled, windowBoost, WIN_SLOTS, windowOwned, directSale, LOANS, LOAN_LEVEL, loanInfo, takeLoan, repayLoan, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
+  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, canVideo, makeVideo, canGift, giveGift, giftStock, discardFurniture, nudgeFurniture, pruneWindow, setWindow, windowFilled, windowBoost, WIN_SLOTS, windowOwned, directSale, LOANS, LOAN_LEVEL, loanInfo, takeLoan, repayLoan, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
 } from './game.js';
 import { genderize, setHeroGender, newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
 import { HERO_LOOK } from './people3d.js';
 import { runOpenBox, runPackBox } from './boxscene.js';
 import { initAudio, setVolumes, sfx, blip, startMusic, isMusicPlaying } from './audio.js';
-import { CHAPTERS, ANSELMO_WELCOME, initStory, currentChapter, chapterProgress, completeChapter } from './story.js';
+import { CHAPTERS, ANSELMO_WELCOME, initStory, currentChapter, chapterProgress, completeChapter, SEASON_STORIES, currentSeasonChapter, completeSeasonChapter, seasonChapterIdx } from './story.js';
 import { createWorld, ARTS, POSTER_SIZES, ROT_Y, STORE_INFO } from './world.js';
 import { FLOORS, WALLS, clearBookCaches } from './kit3d.js';
-import { SEASON, TIERS, EDITIONS, SKINS, skinName, initPass, tierOf, claimable, applyEditions } from './pass.js';
+import { SEASON, SEASONS, TIERS, EDITIONS, SKINS, skinName, initPass, tierOf, claimable, applyEditions, activateSeason, seasonDaysLeft, seasonEnd, STUDIO } from './pass.js';
 import { showBook3D } from './viewer.js';
 import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.27.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.28.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -45,7 +45,7 @@ const buzz = (ms = 30) => { if (P.vibrate && navigator.vibrate) navigator.vibrat
 function prepare(s) {
   setBounds(s.expansions);
   s.settings ??= { hard: false };
-  initStory(s); initPass(s); s.doormat ??= 'Bienvenid@s'; s.encargos ??= []; s.web ??= { orders: [], n: 1 }; if (s.phase === 'morning') s.nooks = [];
+  activateSeason(new Date(), s.testSeason); initStory(s); initPass(s); s.doormat ??= 'Bienvenid@s'; s.encargos ??= []; s.web ??= { orders: [], n: 1 }; if (s.phase === 'morning') s.nooks = [];
   s.msgs ??= []; s.nooks ??= (s.nook ? [{ person: s.nook.person, bookId: s.nook.bookId }] : []); s.goods ??= {}; s.missedGoods ??= {}; s.ratings ??= {}; s.album ??= []; s.notes ??= '';
   clearBookCaches(applyEditions(s));
   if (s.introSeen == null) s.introSeen = !!s.hero;
@@ -236,7 +236,7 @@ function renderPassBtn() {
   const t = tierOf(S), c = claimable(S), pct = t >= SEASON.tiers ? 100 : Math.round(((S.pass.pts % SEASON.per) / SEASON.per) * 100);
   b.classList.toggle('hot', c > 0);
   b.innerHTML = `${passArt('pb')}
-  <span class="pb-t"><b>OTOÑO</b>Temporada 1</span><span class="pb-n">Nivel ${t}</span><i class="pb-bar"><b style="width:${pct}%"></b></i>${c ? `<em>${c}</em>` : ''}`;
+  <span class="pb-t"><b>${SEASON.banner}</b>${SEASON.name}</span><span class="pb-n">Nivel ${t}</span><i class="pb-bar"><b style="width:${pct}%"></b></i>${c ? `<em>${c}</em>` : ''}`;
 }
 
 // Novedades de Mejoras que aún no has visto: al entrar en la pestaña se dan por vistas (las pongas o no)
@@ -803,15 +803,25 @@ addEventListener('resize', tutPlace);
 /* ---------- Historia: capítulos y pistas de Don Anselmo ---------- */
 
 let storyBusy = false;
+function checkSeason() {
+  const was = SEASON.id;
+  activateSeason(new Date(), S.testSeason);
+  if (SEASON.id === was) return;
+  initPass(S); persist(); renderPassBtn(); renderPanel();
+  toast(`¡Empieza la ${SEASON.name}: «${SEASON.title}»!`);
+}
+
 async function maybeStory() {
+  checkSeason();
   if (tutActive() || storyBusy || busy || talking || samirIn || editing || introPending || S.phase !== 'morning' || !layer.hidden || !phoneEl.hidden || !dlg.hidden) return;
-  const ch = completeChapter(S);
+  let ch = completeChapter(S), who = 'anselmo';
+  if (!ch && SEASON.story) { const sc = completeSeasonChapter(S, SEASON.story); if (sc) { ch = sc; who = sc.who; } }
   if (!ch) return;
   storyBusy = true; busy = true;
   persist(); renderTop();
   panelOpen = false; renderPanel();
-  const look = CAST_BY_ID.anselmo.look;
-  const e = { c: { charId: 'anselmo', name: 'Don Anselmo' }, bust: world.portrait(look) };
+  const look = CAST_BY_ID[who].look;
+  const e = { c: { charId: who, name: who === 'anselmo' ? 'Don Anselmo' : CAST_BY_ID[who].name }, bust: world.portrait(look) };
   const n = heroName();
   await new Promise((done) => {
     dlgOpen();
@@ -819,10 +829,19 @@ async function maybeStory() {
     step(0);
   });
   closeDialog();
-  toast(`Capítulo ${S.story.chapter}: «${ch.title}» completado · +${ch.reward} €`);
+  toast(`Capítulo ${who === 'anselmo' ? S.story.chapter : ch.index}: «${ch.title}» completado · +${ch.reward} €`);
   storyBusy = false; busy = false;
   renderPanel();
   setTimeout(maybeStory, 600);
+}
+
+function seasonStoryCard() {
+  const st = SEASON.story && SEASON_STORIES[SEASON.story];
+  if (!st) return '';
+  const ch = currentSeasonChapter(S, SEASON.story), idx = seasonChapterIdx(S, SEASON.story);
+  if (!ch) return `<div class="story-card"><p class="kick">${esc(SEASON.name)} · historia completada</p><h4>${esc(st.title)}</h4><p>Has terminado la historia con ${esc(st.whoName)}. ¡Hasta la próxima temporada!</p></div>`;
+  const v = Math.min(ch.target, ch.value(S));
+  return `<div class="story-card"><p class="kick">${esc(SEASON.name)} · capítulo ${idx + 1} de ${st.chapters.length}</p><h4>${esc(ch.title)}</h4><p>${esc(ch.goal)} · ${v} de ${ch.target}</p><div class="bar"><i style="width:${Math.round(v / ch.target * 100)}%"></i></div></div>`;
 }
 
 function storyCard() {
@@ -937,6 +956,7 @@ function rewardCell(r, track, i, locked) {
   if (r.kind === 'money') { ic = '<span class="rw-ic coin">€</span>'; label = `${r.n} €`; }
   else if (r.kind === 'xp') { ic = '<span class="rw-ic xp">★</span>'; label = `${r.n} XP`; }
   else if (r.kind === 'furn') { ic = icon(r.type, 'rw-svg'); label = `${FURN[r.type].name}${r.skin ? '\n' + skinName(r.type, r.skin) : ''}`; }
+  else if (r.kind === 'studio') { ic = `<span class="rw-ic">${STUDIO[r.item].emoji}</span>`; label = `${STUDIO[r.item].name}\nAlmacén`; }
   else { ic = `<span class="rw-cover">${coverSVG(BOOK[r.book], 34, 51)}</span>`; label = `${BOOK[r.book].title}\n${EDITIONS[r.book].name}`; }
   const state = done ? (r.kind === 'edition' ? 'view' : 'done') : locked ? 'lock' : reached ? 'claim' : 'wait';
   const btn = state === 'claim' ? `<button type="button" class="btn small primary" data-act="passClaim" data-track="${track}" data-i="${i}">Reclamar</button>`
@@ -951,15 +971,17 @@ function openPass() {
   if (prev) passScroll = prev.scrollTop;
   const t = tierOf(S), pct = Math.round(((S.pass.pts % SEASON.per) / SEASON.per) * 100);
   const rows = TIERS.map((tr, i) => `<div class="tier ${i < t ? 'reached' : ''}"><b class="tn">${i + 1}</b>${rewardCell(tr.free, 'free', i, false)}${rewardCell(tr.prem, 'prem', i, !S.pass.premium)}</div>`).join('');
-  openSheet(`<div class="pass-hero">${passBanner()}<div class="ph-t"><small>${SEASON.name}</small><b>OTOÑO</b><span>${SEASON.title}</span></div><button type="button" class="x" data-act="close" aria-label="Cerrar">×</button></div>
+  openSheet(`<div class="pass-hero">${passBanner()}<div class="ph-t"><small>${SEASON.name}</small><b>${SEASON.banner}</b><span>${SEASON.title}</span></div><button type="button" class="x" data-act="close" aria-label="Cerrar">×</button></div>
     <p class="muted">Ganas puntos vendiendo libros, cerrando el día y completando capítulos. Cada ${SEASON.per} puntos subes un nivel.</p>
+    <p class="note">Termina el ${seasonEnd().toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })} · quedan <b>${seasonDaysLeft()}</b> ${seasonDaysLeft() === 1 ? 'día' : 'días'}. Cada mes hay una temporada nueva con su historia.</p>
+    ${S.pass.premium ? '' : `<div class="story-card"><p class="kick">Pase premium ✨</p><p>Desbloquea la pista de la derecha de esta temporada por <b>${SEASON.premiumPrice}</b>. Si entras a mitad de temporada, puedes jugar solo la pista gratis.</p><button type="button" class="btn small primary" data-act="buyPremium">Conseguir el premium</button></div>`}
     <div class="bar"><i style="width:${t >= SEASON.tiers ? 100 : pct}%"></i></div>
     <p class="muted small">Nivel ${t} de ${SEASON.tiers} · ${S.pass.pts} puntos</p>
     ${claimable(S) ? '<button type="button" class="btn primary wide" data-act="passAll">Reclamar todo (' + claimable(S) + ')</button>' : ''}
     <div class="tier head"><b class="tn"></b><span>Gratis</span><span>Premium ✨</span></div>
     <div class="tiers">${rows}</div>
-    <div class="pass-test"><b>Versión de prueba</b><small>Todo es gratis para que lo pruebes. Esto desaparecerá en la versión final.</small>
-      <div class="row3"><button type="button" class="btn small" data-act="passTest" data-k="p100">+100 puntos</button><button type="button" class="btn small" data-act="passTest" data-k="p500">+500</button><button type="button" class="btn small" data-act="passTest" data-k="prem">Premium: ${S.pass.premium ? 'sí' : 'no'}</button><button type="button" class="btn small danger" data-act="passTest" data-k="reset">Reiniciar pase</button></div></div>`, 'pass-sheet');
+    <div class="pass-test" ${S.test ? '' : 'hidden'}><b>Modo pruebas</b><small>Todo es gratis para que lo pruebes. Esto desaparecerá en la versión final.</small>
+      <div class="row3"><button type="button" class="btn small" data-act="passTest" data-k="p100">+100 puntos</button><button type="button" class="btn small" data-act="passTest" data-k="p500">+500</button><button type="button" class="btn small" data-act="passTest" data-k="season">Ver temporada ${SEASON.id === '2026-11' ? '2' : '1'}</button><button type="button" class="btn small" data-act="passTest" data-k="prem">Premium: ${S.pass.premium ? 'sí' : 'no'}</button><button type="button" class="btn small danger" data-act="passTest" data-k="reset">Reiniciar pase</button></div></div>`, 'pass-sheet');
   const sh = $('.pass-sheet');
   if (sh) sh.scrollTop = passScroll;
 }
@@ -2025,6 +2047,7 @@ function panelUpgrades() {
     ${inv.length ? `<p class="note">Tienes <b>${inv.length}</b> ${inv.length === 1 ? 'mueble' : 'muebles'} sin colocar.</p><div class="ups">${inv.map((f) => `<div class="up">${icon(f.type)}<div><b>${FURN[f.type].name}</b><small>Sin colocar</small></div><button type="button" class="btn small ghost2" data-act="discard" data-uid="${f.uid}">Tirar</button></div>`).join('')}</div><button type="button" class="btn primary wide" data-act="decor">Ir a decorar</button>` : ''}
     ${passCard()}
     ${storyCard()}
+    ${seasonStoryCard()}
     <h3>Ampliar la tienda</h3><div class="ups">${exps}</div>
     <h3>Muebles</h3><div class="ups">${cards}${items}</div>`;
 }
@@ -2600,7 +2623,23 @@ const act = {
   replayTut: () => { if (S.phase !== 'morning' || busy) { toast('Termina antes la jornada.'); return; } closeSheet(); panelOpen = false; renderPanel(); tutStart(); },
   replayIntro: () => { if (busy || S.phase === 'serving') { toast('Termina antes la jornada.'); return; } closeSheet(); runIntro(false); },
   creatorBack: () => { newFlow = false; introPending = false; world.stopPedestrians(); closeSheet(); document.body.classList.remove('intro'); S = prepare(stored() ?? newGame()); goShop(); showMenu(); },
+  makeVideo: async () => {
+    if (busy || !canVideo(S)) return;
+    busy = true; vidBtn.hidden = true; panelOpen = false; renderPanel();
+    const ov = document.createElement('div'); ov.id = 'recOv'; ov.innerHTML = '<span class="rec-dot"></span><b>REC</b><i id="recN">3</i>'; document.body.append(ov);
+    world.setRec(true); sfx('whoosh');
+    for (let n = 3; n >= 1; n--) { const el = $('#recN'); if (el) el.textContent = n; await wait(900); }
+    ov.innerHTML = '<b>¡Corten!</b>'; await wait(700); ov.remove(); world.setRec(false);
+    const p = makeVideo(S);
+    persist(); renderTop();
+    if (p) await waitSheet(`${sheetHead('Vídeo subido')}<div class="vid-card"><b>«${esc(p.title)}»</b><p>${p.viral ? '🔥 ¡Se ha hecho viral!' : 'Tu vídeo ya está en tu canal.'}</p>
+      <div class="stats"><div><b>${fmtK(p.views)}</b><span>visualizaciones</span></div><div><b>${fmtK(p.likes)}</b><span>me gusta</span></div><div><b>+${p.gained}</b><span>seguidores</span></div></div>
+      ${p.viral ? `<p class="muted">Todo el mundo pregunta por «${esc(BOOK[p.bookId].title)}».</p>` : ''}<button type="button" class="btn primary wide" data-act="close">Genial</button></div>`);
+    await showLevelUps();
+    busy = false; renderPanel();
+  },
   openPass: () => { openPass(); },
+  buyPremium: () => toast(`El pase premium (${SEASON.premiumPrice}) se podrá comprar cuando publiquemos la app. Mientras tanto, puedes probarlo en el modo pruebas.`),
   pcClose: () => { const e = attending; closeSheet(); if (!e) return; e.c.talk.pcChecked = true; dlgOpen(); clientSays(e, pickOne(['¿Qué tal? ¿Hay suerte?', 'Vale… ¿lo tienes?', 'Te espero, sin prisa.']), 'neutra', () => hub(e)); },
   loanTake: ({ i }) => { const err = takeLoan(S, Number(i)); if (err) { toast(err); return; } sfx('coin'); persist(); renderTop(); renderPhone(); toast('Préstamo concedido: el dinero ya está en tu cuenta.'); },
   loanRepay: () => { const err = repayLoan(S); if (err) { toast(err); return; } sfx('coin'); persist(); renderTop(); renderPhone(); toast('Has devuelto el préstamo.'); },
@@ -2626,14 +2665,14 @@ const act = {
   edPick: ({ v }) => { closeSheet(); const r = edResolve; edResolve = null; r?.(v === 's'); },
   passAll: async () => {
     const prev = $('.pass-sheet'); if (prev) passScroll = prev.scrollTop;
-    const eds = []; let money = 0, xp = 0, furn = 0;
+    const eds = [], studio = []; let money = 0, xp = 0, furn = 0;
     for (let i = 0; i < TIERS.length; i++) for (const track of ['free', 'prem']) {
       const r = claimPass(S, track, i);
       if (typeof r === 'string') continue;
-      if (r.kind === 'money') money += r.n; else if (r.kind === 'xp') xp += r.n; else if (r.kind === 'furn') furn++; else if (r.kind === 'edition') eds.push(r.book);
+      if (r.kind === 'money') money += r.n; else if (r.kind === 'xp') xp += r.n; else if (r.kind === 'furn') furn++; else if (r.kind === 'studio') studio.push(STUDIO[r.item].name); else if (r.kind === 'edition') eds.push(r.book);
     }
     persist(); sfx('win'); buzz(30); renderTop();
-    const parts = [money && `+${money} €`, xp && `+${xp} XP`, furn && `${furn} ${furn === 1 ? 'mueble' : 'muebles'} en el inventario`, eds.length && `${eds.length} ${eds.length === 1 ? 'edición especial' : 'ediciones especiales'}`].filter(Boolean);
+    const parts = [studio.length && `Almacén: ${studio.join(', ')}`, money && `+${money} €`, xp && `+${xp} XP`, furn && `${furn} ${furn === 1 ? 'mueble' : 'muebles'} en el inventario`, eds.length && `${eds.length} ${eds.length === 1 ? 'edición especial' : 'ediciones especiales'}`].filter(Boolean);
     toast(parts.join(' · ') || 'Nada que reclamar');
     clearBookCaches(eds); if (eds.length) syncWorld();
     if (eds.length) { closeSheet(); for (const id of eds) await showBook3D(BOOK[id], { heading: '¡Nueva edición especial!', note: `Cantos tintados en ${EDITIONS[id].edgeName}. Se vende un 35 % más cara.` }); }
@@ -2646,7 +2685,7 @@ const act = {
     if (typeof r === 'string') { toast(r); return; }
     persist(); sfx('win'); buzz(30); renderTop();
     if (r.kind === 'edition') { clearBookCaches([r.book]); syncWorld(); closeSheet(); await showBook3D(BOOK[r.book], { heading: '¡Nueva edición especial!', note: `Cantos tintados en ${EDITIONS[r.book].edgeName}. Se vende un 35 % más cara.` }); openPass(); return; }
-    toast(r.kind === 'money' ? `+${r.n} €` : r.kind === 'xp' ? `+${r.n} XP` : `${FURN[r.type].name}${r.skin ? ' (' + skinName(r.type, r.skin) + ')' : ''} añadido al inventario`);
+    toast(r.kind === 'money' ? `+${r.n} €` : r.kind === 'xp' ? `+${r.n} XP` : r.kind === 'studio' ? `${STUDIO[r.item].name} instalado en el almacén` : `${FURN[r.type].name}${r.skin ? ' (' + skinName(r.type, r.skin) + ')' : ''} añadido al inventario`);
     if (r.kind === 'xp') await showLevelUps();
     openPass(); renderPanel();
   },
@@ -2654,7 +2693,8 @@ const act = {
   passTest: async ({ k }) => {
     if (k === 'p100' || k === 'p500') S.pass.pts = Math.min(SEASON.tiers * SEASON.per, S.pass.pts + (k === 'p100' ? 100 : 500));
     else if (k === 'prem') S.pass.premium = !S.pass.premium;
-    else if (k === 'reset' && await askConfirm('Se reinicia el pase (puntos y premios reclamados). Lo que ya tengas en el inventario se queda.', 'Reiniciar pase', true)) { S.pass = { pts: 0, free: [], prem: [], premium: true, editions: {} }; clearBookCaches(applyEditions(S)); syncWorld(); }
+    else if (k === 'season') { S.testSeason = SEASON.id === '2026-11' ? '2026-12' : '2026-11'; checkSeason(); }
+    else if (k === 'reset' && await askConfirm('Se reinicia el pase (puntos y premios reclamados). Lo que ya tengas en el inventario se queda.', 'Reiniciar pase', true)) { S.pass = S.passes[SEASON.id] = { pts: 0, free: [], prem: [], premium: SEASON.id === '2026-11', editions: {} }; clearBookCaches(applyEditions(S)); syncWorld(); }
     persist(); renderTop(); openPass(); renderPanel();
   },
   openSettings: () => { if (!menuEl.hidden || !dlg.hidden || !introEl.hidden) return; panelOpen = false; renderPanel(); openSettings(); },
@@ -2721,6 +2761,9 @@ new ResizeObserver(() => updateShift()).observe(barEl);
 placeHero();
 renderPanel();
 const openBtn = $('#openShopBtn');
+const vidBtn = document.createElement('button');
+vidBtn.type = 'button'; vidBtn.id = 'videoBtn'; vidBtn.className = 'btn primary'; vidBtn.dataset.act = 'makeVideo'; vidBtn.hidden = true; vidBtn.textContent = '🎬 Hacer un vídeo';
+document.body.append(vidBtn);
 function updateOpenBtn() {
   if (!openBtn) return;
   const calm = S.hero && !busy && !editing && !introPending && menuEl.hidden && layer.hidden && phoneEl.hidden && dlg.hidden && !panelOpen && !samirIn && !talking && !document.body.classList.contains('intro');
@@ -2729,6 +2772,7 @@ function updateOpenBtn() {
   openBtn.textContent = boxesHere ? `Abrir las ${S.boxes.length} cajas de golpe` : evening ? 'Cerrar tienda' : 'Abrir tienda'; openBtn.dataset.act = boxesHere ? 'openAllBoxes' : evening ? 'summary' : 'open';
   const show = boxesHere || evening || S.hero && S.phase === 'morning' && !busy && !editing && !introPending && menuEl.hidden && layer.hidden && phoneEl.hidden && dlg.hidden && !panelOpen && !samirIn && !talking && !document.body.classList.contains('intro') && !(S.day === 0 && S.served >= 1);
   openBtn.hidden = !show;
+  vidBtn.hidden = !(calm && world.view === 'store' && canVideo(S));
 }
 setInterval(updateOpenBtn, 350);
 let doorWas = false;

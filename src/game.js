@@ -1,4 +1,4 @@
-import { addPts, initPass, TIERS, tierOf, EDITIONS, applyEditions } from './pass.js';
+import { addPts, initPass, TIERS, SEASON, tierOf, EDITIONS, applyEditions } from './pass.js';
 import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale, sectionOf, SAGAS } from './books.js';
 import { newCustomer, newUnfillable, pickChar, bookWeights, thanksLine, nopeLine, pickupCustomer, parcelCustomer, CAST, CAST_BY_ID } from './cast.js';
 import { FURN, placed, placementError, cellsOf, dims, EXPANSIONS, setBounds, seatSpots } from './layout.js';
@@ -375,6 +375,7 @@ export function startDay(s) {
   });
   genWebOrders(s);
   genMessages(s);
+  if (SEASON.story === 'lia' && (s.seasonStory?.lia?.chapter ?? 0) < 4 && Math.random() < .7) { const lia = CAST_BY_ID.lia, b = pick(availableBooks(s)); const c = newCustomer(lia, b.id, Math.random() < .5 ? 'tags' : 'genre'); s.queue.splice(Math.floor(Math.random() * (s.queue.length + 1)), 0, c); }
   s.idx = 0;
   s.served = 0;
   s.current = null;
@@ -494,6 +495,27 @@ export function giveGift(s, charId, goodId) {
   addPts(s, liked ? 12 : 4); gainXp(s, liked ? 12 : 4);
   s.stats ??= { sold: 0, regulars: {} }; s.stats.gifts = (s.stats.gifts ?? 0) + 1;
   return { liked, good: g };
+}
+
+/* ---------- Estudio de vídeo (almacén): grabar con la tienda cerrada ---------- */
+
+export const canVideo = (s) => !!s.studio?.tripod && s.phase !== 'serving' && s.video?.day !== s.day;
+export function makeVideo(s) {
+  if (!canVideo(s)) return null;
+  const st = s.studio, q = 1 + (st.phone ? .3 : 0) + (st.rings ?? 0) * .25;
+  const viral = Math.random() < .06 + (st.phone ? .05 : 0) + (st.rings ?? 0) * .06;
+  const views = Math.round((500 + Math.random() * 1500) * (1 + s.followers / 180) * q * (viral ? 7 : 1));
+  const likes = Math.round(views * (.06 + Math.random() * .05));
+  const gained = Math.max(1, Math.round(likes / (viral ? 25 : 55)));
+  const avail = availableBooks(s), book = pick(avail);
+  s.followers += gained; s.rep += viral ? 4 : 1; addPts(s, viral ? 20 : 8); gainXp(s, viral ? 20 : 8);
+  s.video = { day: s.day };
+  s.stats ??= { sold: 0, regulars: {} }; s.stats.videos = (s.stats.videos ?? 0) + 1;
+  if (viral) s.trend.push({ id: book.id, until: s.day + 2 });
+  const title = pick(['Un día en mi librería', 'Mi rincón de lectura acogedor', 'Novedades de la semana', 'Cierre de caja y chocolate caliente', 'Lo que de verdad vende una librería de barrio']);
+  const post = { kind: 'video', day: s.day, bookId: book.id, views, likes, gained, viral, title };
+  s.feed.unshift(post);
+  return post;
 }
 
 /* ---------- Compra directa: el cliente coge un libro de la estantería y paga sin hablar ---------- */
@@ -973,6 +995,7 @@ export function claimPass(s, track, i) {
   if (r.kind === 'money') s.money = Math.round((s.money + r.n) * 100) / 100;
   else if (r.kind === 'xp') gainXp(s, r.n);
   else if (r.kind === 'furn') { const f = { uid: uid(), type: r.type, x: null, y: null, pass: true }; if (r.skin) f.skin = r.skin; if (r.type === 'shelf') f.rows = [[], [], []]; if (r.type === 'table') f.books = []; s.furniture.push(f); }
-  else if (r.kind === 'edition' && EDITIONS[r.book]) { s.pass.editions[r.book] = true; applyEditions(s); }
+  else if (r.kind === 'edition' && EDITIONS[r.book]) { s.pass.editions[r.book] = true; (s.editionsAll ??= {})[r.book] = true; applyEditions(s); }
+  else if (r.kind === 'studio') { s.studio ??= {}; if (r.item === 'rings') s.studio.rings = 2; else s.studio[r.item] = true; }
   return r;
 }

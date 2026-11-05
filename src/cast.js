@@ -232,6 +232,17 @@ export const CAST = [
     look: { skin: '#d29a6c', hair: '#8a8a8a', eyes: '#3a2a1c', style: 'canoso', beard: 'sombra', outfit: 'trench', coat: '#6a5a46', scarf: '#3a3a44', pants: '#2f3548', acc: 'cafe', scale: 1.02 },
     voice: { intro: ["Buenas. Vengo de la comisaría, bueno, de jubilado.","Hola. Algo de novela negra, por favor.","Buenos días. Dígame que hay un buen asesino.","Hola, hijo. Busco misterio del de verdad."], yes: ["Eso mismo.","Bien visto.","Así es."], hmm: ["Eso ya lo adiviné.","No, no cuela.","Poco creíble."], like: ["Resolví el caso de","Adiviné al culpable de","Me engañó"], thanks: ["Muy bien, a ver si me engaña.","Gracias, esta noche cae.","Perfecto. Lo termino antes del jueves."], nope: ["Eso ya lo vi venir.","No, ese no."] },
   },
+  {
+    id: 'lia', story: true, name: 'Lía', age: 'joven', pref: { romantasia: 3, romance: 3, epica: 2, scifi: 1.5, humor: 2, literaria: 1.5 }, likes: ['marcapaginas', 'tote', 'vela'],
+    look: { skin: '#d9a07a', hair: '#c4344a', eyes: '#3a2418', style: 'largo', lashes: true, earrings: true, outfit: 'coat', coat: '#f2c94c', scarf: '#ffffff', pants: '#2a2a30', acc: 'cámara', scale: 1 },
+    voice: {
+      intro: ['¡Holaaa! Qué ganas tenía de volver.', 'Hola, hola. ¿Me dejas grabar un segundito por aquí?', '¡Buenas! Hoy busco algo que quede genial en pantalla.', 'Hola… ¡qué luz tan buena tiene esto!'],
+      yes: ['¡Eso, eso!', 'Súper, justo eso.', '¡Exacto!'], hmm: ['Mmm, no pega con mi canal.', 'Uy, no sé.', 'No me da vibras.'],
+      like: ['Mi comunidad se volvió loca con', 'Hice un vídeo sobre', 'Está arrasando'],
+      thanks: ['¡Perfecto, esto va directo al próximo vídeo!', '¡Me lo llevo! Te etiqueto, ¿vale?', 'Qué portada tan bonita, ¡gracias!'],
+      nope: ['Mmm, ese no pega con mi estética.', 'Uy, no, ese no.'],
+    },
+  },
 ];
 /* ---------- Samir, el repartidor: aparece cuando llegan los pedidos ---------- */
 

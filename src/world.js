@@ -547,6 +547,34 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
     place(openCardboard(), 1.6, 0, 5.4, -.1);
     place(openCardboard(true), .75, 0, 4.45, .35);
   }
+  // Estudio de vídeo: trípode, trípode de móvil y aros de luz (según lo que tengas del pase)
+  let recMats = [], recLed = null;
+  function facing(x, z) { return Math.atan2(-(STORE.d / 2 - z), STORE.w / 2 - x); }   // el frente (+x) mira al centro del almacén
+  function studioProps() {
+    const st = S.studio; recMats = []; recLed = null;
+    if (!st) return;
+    const metal = M('#2a2a30', .5, .6);
+    const stand = (x, z, h, legs = .22) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = facing(x, z); [0, 1, 2].forEach((i) => { const a = i * 2.09 + .3; const leg = cyl(.011, .011, h * .98, metal, 6); const th = Math.atan((legs / 2) / (h * .98)); leg.position.set(Math.cos(a) * legs / 2, h * .49, Math.sin(a) * legs / 2); leg.rotation.set(-Math.sin(a) * th, 0, Math.cos(a) * th); g.add(leg); }); cylAt(g, .018, .018, .25, metal, 0, h - .2, 0, 8); return g; };
+    if (st.tripod) {
+      const g = stand(5.7, 5.3, 1.3, .3);
+      boxAt(g, .3, .2, .2, M('#1d1d22', .5, .3), -.05, 1.3, 0, .02);
+      const lens = cyl(.07, .085, .16, M('#0e0e12', .4, .5), 14); lens.rotation.z = Math.PI / 2; lens.position.set(.16, 1.4, 0); g.add(lens);
+      const led = sph(.016, MG('#ff3030', 1.5)); led.position.set(-.15, 1.46, .09); g.add(led); recLed = led;
+      stockRoot.add(g);
+    }
+    if (st.phone) {
+      const g = stand(4.8, 5.5, .95, .2);
+      boxAt(g, .08, .17, .012, M('#1d1d22', .4, .4), 0, .98, 0, .006);
+      const scr = new THREE.Mesh(new THREE.PlaneGeometry(.07, .15), MG('#5aa8d8', .6)); scr.position.set(.008, 1.065, 0); scr.rotation.y = Math.PI / 2; g.add(scr);
+      stockRoot.add(g);
+    }
+    if (st.rings) [[6.5, 4.7], [6.4, 5.5]].forEach(([x, z]) => {
+      const g = stand(x, z, 1.55, .25);
+      const ringM = MG('#fff2d0', .5); recMats.push(ringM);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(.28, .028, 10, 36), ringM); ring.position.set(.05, 1.62, 0); ring.rotation.y = Math.PI / 2; g.add(ring);
+      stockRoot.add(g);
+    });
+  }
   function syncStore() {
     if (!storeBuilt) buildStoreShell();
     if (stockRoot) { storeRoot.remove(stockRoot); disposeTree(stockRoot); }
@@ -560,6 +588,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       const n = Math.min(S.storage[id], 6);
       for (let k = 0; k < n; k++) { const o = lyingBook(BOOK[id], .24, .34, .045); o.position.set(x, y + k * .046, z + .02); o.rotation.y = Math.PI + (k % 2 ? .08 : -.05); stockRoot.add(o); }
     });
+    studioProps();
     storeDecor();   // cajas de adorno apiladas, unas cerradas y otras abiertas
     S.boxes.slice(0, BOX_SLOTS.length * 3).forEach((b, i) => {
       // cajas pequeñas: se reparten en una cuadrícula y, si hay muchas, se apilan en alturas (sin solaparse)
@@ -782,7 +811,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       if (fk !== keys.furn) { keys.furn = fk; buildFurn(); keys.nook = ''; }
       const nk = JSON.stringify([S.nooks, fk]);
       if (nk !== keys.nook) { keys.nook = nk; syncNook(); }
-      const stk = JSON.stringify([S.storage, S.boxes.map((b) => b.id)]);
+      const stk = JSON.stringify([S.storage, S.boxes.map((b) => b.id), S.studio]);
       if (stk !== keys.store) { keys.store = stk; syncStore(); }
       if (selUid) markSelection(selUid);
     },
@@ -792,6 +821,8 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
     rotate(dir) { rig.azT += dir * Math.PI / 2; },
     zoom(k) { rig.zoom = THREE.MathUtils.clamp(rig.zoom * k, .6, 2.6); fit(); },
     recenter() { rig.target.set(rig.center.x, .9, rig.center.z); rig.zoom = 1; fit(); },
+    // luz de los aros y piloto rojo mientras se graba
+    setRec(on) { recMats.forEach((m) => { m.emissiveIntensity = on ? 3.6 : .5; }); if (recLed) recLed.material.emissiveIntensity = on ? 4 : 1.5; },
     setShift(px) { rig.shiftT = px; },
     setHeroLook(look) {
       const old = hero, nh = makePerson(heroSized(look));
