@@ -1580,24 +1580,26 @@ function placeSheet(id) {
 /* ---------- Panel: Almacén ---------- */
 
 function topHTML() {
-  const top = topSellers(S, 3);
+  const top = topSellers(S, 6);
   if (!top.length) return '';
-  const onTable = new Set(placed(S.furniture).filter((f) => f.type === 'table').flatMap((f) => f.books));
-  return `<div class="story-card"><p class="kick">Más vendidos</p>${top.map(([id, n], i) => `<div class="up"><div><b>${i + 1}. ${esc(BOOK[id].title)}</b><small>${n} ${n === 1 ? 'venta' : 'ventas'}</small></div>${onTable.has(id) ? '<span class="tag ok">En la mesa</span>' : `<button type="button" class="btn small primary" data-act="toTable" data-id="${id}">A la mesa</button>`}</div>`).join('')}<p class="muted small">La mesa de novedades y más vendidos vende los libros un 10 % más caros.</p></div>`;
+  const onTable = new Map();
+  placed(S.furniture).filter((f) => f.type === 'table').flatMap((f) => f.books).forEach((id) => onTable.set(id, (onTable.get(id) ?? 0) + 1));
+  return `<div class="story-card"><p class="kick">Más vendidos</p>${top.map(([id, n], i) => `<div class="up"><div><b>${i + 1}. ${esc(BOOK[id].title)}</b><small>${n} ${n === 1 ? 'venta' : 'ventas'}</small></div>${onTable.has(id) ? `<span class="tag ok">En la mesa ×${onTable.get(id)}</span>` : ''}<button type="button" class="btn small primary" data-act="toTable" data-id="${id}">${onTable.has(id) ? '+1' : 'A la mesa'}</button></div>`).join('')}<p class="muted small">La mesa de novedades y más vendidos (hasta 24 libros, con varios del mismo título apilados) vende los libros un 10 % más caros.</p></div>`;
 }
 
 function panelStock() {
   const map = sellable(S);
   const rows = [...map.entries()].sort((a, b) => BOOKS.findIndex((x) => x.id === a[0]) - BOOKS.findIndex((x) => x.id === b[0]));
   const holders = placed(S.furniture).filter((f) => f.type === 'shelf' || f.type === 'table');
-  const hasTable = holders.some((f) => f.type === 'table'), onTbl = new Set(holders.filter((f) => f.type === 'table').flatMap((f) => f.books));
+  const hasTable = holders.some((f) => f.type === 'table'), onTbl = new Map();
+  holders.filter((f) => f.type === 'table').flatMap((f) => f.books).forEach((id) => onTbl.set(id, (onTbl.get(id) ?? 0) + 1));
   panelEl.innerHTML = `
     <div class="pn-h"><h2>Almacén</h2><button type="button" class="x" data-act="tab" data-id="stock" aria-label="Cerrar">×</button></div>
     <p class="muted">${S.boxes.length ? `Recién llegado: <b>${S.boxes.length}</b> ${S.boxes.length === 1 ? 'caja' : 'cajas'} por abrir (toca una caja en la sala o pulsa Abrir).` : 'No hay cajas nuevas.'} Tienes ${storageCount(S)} libros guardados.</p>
     ${S.boxes.length ? `<h3>Recién llegado</h3>${S.boxes.length > 1 ? `<button type="button" class="btn primary wide" data-act="openAllBoxes">Abrir las ${S.boxes.length} cajas de golpe</button>` : ''}${S.boxes.map((b) => `<div class="boxcard"><svg viewBox="0 0 48 48" fill="none" stroke="#38211a" stroke-width="2.4" stroke-linejoin="round"><path d="M24 6 6 14v20l18 8 18-8V14z" fill="#d9a766"/><path d="M6 14l18 8 18-8M24 22v20"/></svg><div class="t"><b>Pedido del día ${b.day}</b><br>${boxBooks(b)} libros · ${b.items.length} ${b.items.length === 1 ? 'título' : 'títulos'}</div><button type="button" class="btn small primary" data-act="openBox" data-id="${b.id}">Abrir</button></div>`).join('')}` : ''}
     ${topHTML()}
     <h3>Existencias</h3>
-    ${rows.length ? rows.map(([id, e]) => `<div class="stk"><span class="cv">${coverSVG(BOOK[id], 40, 60)}</span><div class="t"><b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small><div class="stk-act"><span class="pill">Tienda ${e.shop}</span><span class="pill">Almacén ${e.store}</span>${e.shop || !e.store ? '' : `<button type="button" class="btn small" data-act="place" data-id="${id}">Exponer</button>`}${hasTable && !onTbl.has(id) ? `<button type="button" class="btn small ghost" data-act="toTable" data-id="${id}" title="Poner en la mesa de novedades">A la mesa</button>` : ''}</div></div></div>`).join('') : '<p class="empty">El almacén está vacío. Haz un pedido en Pedidos.</p>'}
+    ${rows.length ? rows.map(([id, e]) => `<div class="stk"><span class="cv">${coverSVG(BOOK[id], 40, 60)}</span><div class="t"><b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small><div class="stk-act"><span class="pill">Tienda ${e.shop}</span><span class="pill">Almacén ${e.store}</span>${e.shop || !e.store ? '' : `<button type="button" class="btn small" data-act="place" data-id="${id}">Exponer</button>`}${hasTable ? `<button type="button" class="btn small ghost" data-act="toTable" data-id="${id}" title="Poner una copia en la mesa de novedades">${onTbl.has(id) ? `+1 a la mesa (×${onTbl.get(id)})` : 'A la mesa'}</button>` : ''}</div></div></div>`).join('') : '<p class="empty">El almacén está vacío. Haz un pedido en Pedidos.</p>'}
     <button type="button" class="btn wide" data-act="autoall" ${rows.some(([, e]) => !e.shop) && shelfFree(S) ? '' : 'disabled'}>Exponer un ejemplar de cada título</button>
     ${holders.map((f) => `<button type="button" class="btn wide ghost" data-act="furn" data-uid="${f.uid}">${f.type === 'shelf' ? 'Estantería' : 'Mesa de novedades'} (${f.type === 'shelf' ? f.rows.flat().length : f.books.length} libros)</button>`).join('')}`;
 }
@@ -2087,7 +2089,7 @@ const act = {
   arrange: () => { const n = autoPlace(S); persist(); syncWorld(); renderPanel(); toast(n ? `Has expuesto ${n} títulos.` : 'No había hueco libre.'); },
   autoall: () => { const n = autoPlace(S); persist(); closeSheet(); syncWorld(); toast(n ? `Has expuesto ${n} títulos.` : 'No había hueco libre.'); renderPanel(); },
   place: ({ id }) => placeSheet(id),
-  toTable: ({ id }) => { const err = setOnTable(S, id); if (err) { toast(err); return; } persist(); syncWorld(); renderPanel(); toast(`«${BOOK[id].title}» está ahora en la mesa de novedades y más vendidos.`); },
+  toTable: ({ id }) => { const err = setOnTable(S, id); if (err) { toast(err); return; } persist(); syncWorld(); renderPanel(); toast(`«${BOOK[id].title}» en la mesa de novedades.`); },
   placeAt: ({ id, cid }) => {
     const err = placeBook(S, id, cid);
     if (err) { toast(err); return; }

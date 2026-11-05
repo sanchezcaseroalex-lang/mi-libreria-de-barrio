@@ -4,7 +4,7 @@ import { newCustomer, newUnfillable, pickChar, bookWeights, thanksLine, nopeLine
 import { FURN, placed, placementError, cellsOf, dims, EXPANSIONS, setBounds } from './layout.js';
 
 export const ROW_CAP = 8;
-export const TABLE_CAP = 10;
+export const TABLE_CAP = 24;   // 5 de pie en el centro y el resto tumbados alrededor (los repetidos se apilan)
 export const XP_LEVELS = [0, 90, 225, 420, 675, 990, 1380, 1850, 2400, 3080];
 export const MAX_LEVEL = XP_LEVELS.length;
 
@@ -176,9 +176,9 @@ export const shelfFree = (s) => containers(s).reduce((a, c) => a + (c.cap - c.ar
 
 export function placeBook(s, bookId, containerId) {
   if (!(s.storage[bookId] > 0)) return 'No te quedan copias en el almacén.';
-  if (onDisplay(s).has(bookId)) return 'Ya hay un ejemplar de ese libro en la tienda.';
   const c = containers(s).find((x) => x.id === containerId);
   if (!c) return 'Ese sitio no existe.';
+  if (c.kind !== 'table' && onDisplay(s).has(bookId)) return 'Ya hay un ejemplar de ese libro en la tienda.';   // en la mesa sí puede haber varios
   if (c.arr.length >= c.cap) return c.kind === 'table' ? 'La mesa está llena.' : 'Esa balda está llena.';
   c.arr.push(bookId);
   s.storage[bookId]--;
@@ -188,13 +188,14 @@ export function placeBook(s, bookId, containerId) {
 
 // Pone un título en la mesa de novedades y más vendidos (lo saca de la estantería si estaba allí)
 export function setOnTable(s, bookId) {
-  const table = containers(s).find((c) => c.kind === 'table');
+  const table = containers(s).find((c) => c.kind === 'table' && c.arr.length < c.cap) ?? containers(s).find((c) => c.kind === 'table');
   if (!table) return 'Necesitas una mesa de novedades colocada en la tienda.';
-  if (table.arr.includes(bookId)) return 'Ese libro ya está en la mesa.';
   if (table.arr.length >= table.cap) return 'La mesa está llena: quita algún libro tocándola.';
-  if (onDisplay(s).has(bookId)) { removeFromDisplay(s, bookId); table.arr.push(bookId); return null; }
-  if (!(s.storage[bookId] > 0)) return 'No te quedan copias de ese libro.';
-  return placeBook(s, bookId, table.id);
+  if ((s.storage[bookId] ?? 0) > 0) return placeBook(s, bookId, table.id);   // una copia más del almacén (pueden ser varias del mismo título)
+  // sin copias en el almacén: se pasa uno de la estantería a la mesa
+  const shelf = containers(s).find((c) => c.kind === 'row' && c.arr.includes(bookId));
+  if (shelf) { shelf.arr.splice(shelf.arr.indexOf(bookId), 1); table.arr.push(bookId); return null; }
+  return 'No te quedan copias de ese libro.';
 }
 export const topSellers = (s, n = 3) => Object.entries(s.soldBy ?? {}).sort((a, b) => b[1] - a[1]).slice(0, n);
 

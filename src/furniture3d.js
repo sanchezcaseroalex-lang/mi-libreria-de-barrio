@@ -71,25 +71,32 @@ function roundTable(f, ctx) {
   cylAt(g, R0, R0, .07, topM, 0, topY - .07, 0, 56); cylAt(g, R0 + .015, R0 + .015, .03, rimM, 0, topY - .06, 0, 56);
   cylAt(g, .86, .86, .008, M('#f3e7c9', 1), 0, topY, 0, 48);
   const y0 = topY + .004, ids = f.books ?? [];
-  const nStand = Math.min(ids.length, 4), stand = ids.slice(0, nStand), lying = ids.slice(nStand);
-  // al centro, los de pie sobre un soporte redondo y con la cubierta hacia fuera
+  const nStand = Math.min(ids.length, 5), stand = ids.slice(0, nStand), lying = ids.slice(nStand);
+  // al centro, hasta 5 de pie sobre un soporte redondo y con la cubierta hacia fuera
   if (stand.length) {
     cylAt(g, .4, .43, .07, mOak, 0, y0, 0, 32);
-    const rr = stand.length === 1 ? 0 : .27;
+    const rr = stand.length === 1 ? 0 : stand.length <= 3 ? .24 : .3;
     stand.forEach((id, i) => {
       const th = i / stand.length * Math.PI * 2 + Math.PI / 2;
       const w = new THREE.Group(); w.position.set(Math.cos(th) * rr, y0 + .07, Math.sin(th) * rr); w.rotation.y = ang(th);
       const bk = displayBook(BOOK[id], .25, .38, .05); bk.rotation.x = -.14; w.add(bk); g.add(w);
     });
     cylAt(g, .006, .006, .55, mBrass, 0, y0 + .07, 0, 6);
-    const flag = canvasTex(160, 60, (c, w2, h2) => { c.fillStyle = '#c8566b'; c.fillRect(0, 0, w2, h2); c.fillStyle = '#fff3d8'; c.font = '700 26px Fraunces, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Novedades', w2 / 2, h2 / 2 + 1); });
+    const flag = canvasTex(160, 60, (c, w2, h2) => { c.fillStyle = '#c8566b'; c.fillRect(0, 0, w2, h2); c.fillStyle = '#fff3d8'; c.font = '700 26px Fraunces, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Novedades', w2 / 2, h2 / 2); });
     const fm = new THREE.Mesh(new THREE.PlaneGeometry(.26, .1), new THREE.MeshStandardMaterial({ map: flag, side: THREE.DoubleSide })); fm.position.set(.13, y0 + .58, 0); g.add(fm);
   }
-  // alrededor, los tumbados: cubierta hacia arriba, título legible desde fuera
-  lying.forEach((id, i) => {
-    const th = i / lying.length * Math.PI * 2 + Math.PI / 2;
-    const o = lyingBook(BOOK[id], .27, .4, .05); o.position.set(Math.cos(th) * .62, y0, Math.sin(th) * .62); o.rotation.y = ang(th);
-    g.add(o);
+  // alrededor, los tumbados (cubierta hacia arriba, título legible desde fuera); los del mismo título se apilan
+  const stacks = [], at = new Map();
+  lying.forEach((id) => { if (at.has(id)) stacks[at.get(id)].n++; else { at.set(id, stacks.length); stacks.push({ id, n: 1 }); } });
+  const rad = stacks.length > 12 ? .7 : .66;
+  stacks.forEach((s2, i) => {
+    const th = i / stacks.length * Math.PI * 2 + Math.PI / 2;
+    for (let k = 0; k < s2.n; k++) {
+      const o = lyingBook(BOOK[s2.id], .27, .4, .05);
+      o.position.set(Math.cos(th) * rad, y0 + k * .05, Math.sin(th) * rad);
+      o.rotation.y = ang(th) + (k ? (((hashStr(s2.id) + k * 5) % 7) - 3) * .025 : 0);   // las pilas quedan un poco desordenadas
+      g.add(o);
+    }
   });
   if (!ids.length) { const c = cyl(.1, .1, .02, M('#e8d9bd', .6), 20); c.position.set(0, y0 + .01, 0); g.add(c); }
   return shade(g);
