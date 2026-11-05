@@ -637,7 +637,9 @@ export function openShop(s) {
 // Los clientes llegan solos y se atienden en el orden en que llegan al mostrador
 export function attend(s, c) { s.current = c; }
 export function release(s) {
+  const direct = s.current?.direct;   // el que coge un libro solo no cuenta en la cola del día
   s.current = null;
+  if (direct) return;
   s.served = (s.served ?? 0) + 1;
   s.idx = s.served;
   if (s.served >= s.queue.length) endDay(s);

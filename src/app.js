@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.24.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.25.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -481,7 +481,7 @@ async function goRead(e, tok) {
   return true;
 }
 
-// Un curioso coge un libro de una estantería, va al mostrador y paga solo (sin conversación)
+// Un curioso coge un libro de una estantería y va a la caja: hace cola y lo atiendes tú (sin conversación: solo cobrar)
 async function directBuy(e, tok) {
   const shown = [...onDisplay(S).keys()];
   if (!shown.length || S.phase !== 'serving') return;
@@ -495,18 +495,33 @@ async function directBuy(e, tok) {
   }
   if (tok !== dayTok) return;
   world.carry(e.p, id);
-  const cells = lineCells();
-  if (cells.length) await routeTo(e.p, cells[Math.min(line.length + 1, cells.length - 1)], 2.1);
-  await sleep(900);
-  if (tok !== dayTok) { world.carry(e.p, null); return; }
-  const price = directSale(S, id);
-  if (price) {
-    sfx('coin'); world.say(e.p, `Me lo llevo  +${price} €`, 'happy');
-    toast(`Un cliente ha cogido «${BOOK[id].title}» y lo ha pagado · +${price} €`);
-    persist(); renderTop(); syncWorld();
-    await sleep(2300); world.say(e.p, '');
-  }
+  // se convierte en un cliente más de la cola (marcado como «directo»)
+  e.c = { direct: true, charId: 'cliente', name: 'Cliente', type: 'direct', bookId: id, person: e.p.userData.look, talk: { asked: [] }, line: `Me llevo «${BOOK[id].title}».` };
+  e.bust = world.portrait(e.p.userData.look);
+  e.ambient = false;
+  while (line.length >= Math.max(1, lineCells().length) && tok === dayTok && S.phase === 'serving') await sleep(1000);
+  if (tok !== dayTok || S.phase !== 'serving') { world.carry(e.p, null); return; }
+  e.done = new Promise((r) => { e.finish = r; });
+  line.push(e);
+  updateLine();
+  await Promise.race([e.done, (async () => { while (tok === dayTok && S.phase === 'serving' && line.includes(e)) await sleep(700); })()]);
+  const i = line.indexOf(e); if (i >= 0) line.splice(i, 1);
   world.carry(e.p, null);
+}
+
+// Quien coge un libro de la estantería ya sabe cuál quiere: llega a la caja y tú solo lo cobras
+function directTalk(e) {
+  const c = e.c, b = BOOK[c.bookId];
+  dlgOpen();
+  clientSays(e, pickOne([`Me llevo este: «${b.title}». ¿Me lo cobras?`, `Ya lo tengo elegido: «${b.title}». ¿Me cobras?`, `Vengo a pagar este libro, «${b.title}».`]), 'contenta', () => {
+    clearInterval(dlgTimer); dlgNext = null; dlgTyping = false;
+    setImg(dlgR, heroImg('neutra'), heroBust());
+    dlg.classList.add('right-on'); dlg.classList.remove('left-on');
+    $('.dlg-name').textContent = heroName();
+    $('.dlg-text').textContent = '¿Se lo cobras?';
+    $('.dlg-hint').hidden = true;
+    $('.dlg-opts').innerHTML = `<button type="button" class="opt go" data-act="directCharge">Cobrar ${money(b.price)}</button>`;
+  });
 }
 
 async function runShopper(e, tok) {
@@ -863,6 +878,7 @@ async function attend() {
   }
   busy = false;
   talking = true;
+  if (e.c.direct) { directTalk(e); return; }
   startTalk(e);
 }
 
@@ -2554,6 +2570,18 @@ const act = {
   winPut: ({ uid, i, key }) => { const err = setWindow(S, uid, Number(i), key); if (err) { toast(err); return; } persist(); syncWorld(); windowSheet(uid); },
   winBack: ({ uid }) => windowSheet(uid),
   gift: ({ id }) => giftRes?.(id),
+  directCharge: () => {
+    const e = attending;
+    if (!e?.c?.direct) return;
+    const b = BOOK[e.c.bookId];
+    playerSays(e, `Son ${money(b.price)}. ¡Gracias por tu compra!`, async () => {
+      closeDialog(); talking = false; busy = true;
+      const price = directSale(S, e.c.bookId);
+      persist(); renderTop(); syncWorld();
+      if (price) await finishCustomer(e, { sold: true, price, tip: 0, message: pickOne(['¡Gracias, hasta pronto!', 'Perfecto, ¡que tengas buen día!', '¡Muchas gracias!']) }, e.c.bookId);
+      else await finishCustomer(e, { sold: false, neutral: true, message: 'Vaya… se acaba de agotar.' }, null);
+    }, 'contenta');
+  },
   upsell: ({ v }) => { const f = upRes; upRes = null; f?.(v === 'y'); },
   buyGood: ({ id, n }) => { const err = buyGood(S, id, Number(n) || 1); if (err) { toast(err); return; } sfx('coin'); persist(); renderTop(); renderPanel(); toast(`${GOOD[id].name} ×${Number(n) || 1} en el almacén.`); },
   edPick: ({ v }) => { closeSheet(); const r = edResolve; edResolve = null; r?.(v === 's'); },
