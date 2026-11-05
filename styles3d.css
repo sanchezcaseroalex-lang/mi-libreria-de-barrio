@@ -114,3 +114,8 @@ textarea.input { resize: none; font-family: var(--hand); font-size: 20px; line-h
 .stk .cv { flex: none; }
 .stk .stk-act { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
 .stk .stk-act .btn.small { min-height: 30px; padding: 3px 10px; font-size: 12.5px; flex: none; width: auto; }
+
+/* filtros del almacén */
+.stk-tools { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
+.stk-tools input, .stk-tools select { width: 100%; box-sizing: border-box; min-height: 38px; padding: 6px 10px; border: 2px solid var(--wood-d, #6a4a38); border-radius: 12px; background: #fffaf0; color: var(--ink, #38211a); font: 600 14px var(--sans, sans-serif); }
+.stk-tools .stk-sel { display: flex; gap: 6px; } .stk-tools .stk-sel select { flex: 1; min-width: 0; }

@@ -22,7 +22,7 @@ import { showBook3D } from './viewer.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = 'v16 · botones del almacén arreglados';
+const BUILD = 'v17 · filtros del almacén';
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -1539,16 +1539,19 @@ const tagChips = (tags) => tags.map((t) => `<span class="chip">${esc(TAGS[t])}</
 function showPicker() {
   const c = S.current;
   const map = sellable(S);
-  const ids = [...map.keys()].sort((a, b) => BOOKS.findIndex((x) => x.id === a) - BOOKS.findIndex((x) => x.id === b));
-  const slots = ids.map((id) => {
+  const allIds = [...map.keys()].sort((a, b) => BOOKS.findIndex((x) => x.id === a) - BOOKS.findIndex((x) => x.id === b));
+  const slotsFor = () => stkApply(allIds).map((id) => {
     const b = BOOK[id], e = map.get(id), out = e.store <= 0;
     return `<button type="button" class="slot ${out ? 'out' : ''}" ${out ? 'disabled' : `data-act="pickBook" data-id="${id}"`}>${coverSVG(b, 78, 117)}<b>${esc(b.title)}</b>${b.saga ? `<small class="saga">${esc(sagaLabel(b))}</small>` : ''}${S.settings.hard ? '' : `<span class="tags">${tagChips(b.tags.slice(0, 2))}</span>`}${out ? '<small style="color:#f6ecd9">agotado</small>' : `<em>${e.store}</em>`}</button>`;
-  }).join('');
+  }).join('') || '<p class="empty">Ningún libro coincide con ese filtro.</p>';
+  const slots = slotsFor();
+  stkRender = () => { const g = $('.shelfgrid'); if (g) g.innerHTML = slotsFor(); };
   openSheet(`<div class="sheet-h"><h2>Estantería del almacén</h2></div>
     <div class="picker"><button type="button" class="btn wide ghost" data-act="cancelPick">‹ Volver sin libro</button>
     ${c.type === 'title' && !c.pickup && (S.storage[c.target] ?? 0) <= 0 ? `<p class="warn">⚠ No te quedan ejemplares de «${esc(BOOK[c.target].title)}».</p>` : ''}
     <p class="quote small">${esc(c.name)}: “${esc(c.line)}”</p>
     <p class="muted sub">Coge el libro que pide. Si te equivocas, el cliente te lo dirá.</p>
+    ${stkToolsHTML()}
     <div class="shelfgrid">${slots}</div>
     <button type="button" class="btn wide ghost" data-act="cancelPick">Volver sin libro</button></div>`);
   $('.sheet-bg')?.removeAttribute('data-act');
@@ -1587,7 +1590,38 @@ function topHTML() {
   return `<div class="story-card"><p class="kick">Más vendidos</p>${top.map(([id, n], i) => `<div class="up"><div><b>${i + 1}. ${esc(BOOK[id].title)}</b><small>${n} ${n === 1 ? 'venta' : 'ventas'}</small></div>${onTable.has(id) ? `<span class="tag ok">En la mesa ×${onTable.get(id)}</span>` : ''}<button type="button" class="btn small primary" data-act="toTable" data-id="${id}">${onTable.has(id) ? '+1' : 'A la mesa'}</button></div>`).join('')}<p class="muted small">La mesa de novedades y más vendidos luce hasta 24 libros, con varios del mismo título apilados. El precio no cambia: un libro vale lo mismo esté donde esté.</p></div>`;
 }
 
+/* ---------- Filtrar y ordenar libros (Almacén y elegir libro para un cliente) ---------- */
+
+const STK = { q: '', g: '', sort: 'cat' };
+let stkRender = null;
+const norm = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const SORTS = { cat: 'Orden del catálogo', az: 'Título A → Z', za: 'Título Z → A', au: 'Autor A → Z', ua: 'Autor Z → A' };
+function stkApply(ids) {
+  let out = ids.filter((id) => { const b = BOOK[id]; return (!STK.g || b.genre === STK.g) && (!STK.q || norm(`${b.title} ${b.author}`).includes(norm(STK.q))); });
+  const by = (f, dir) => (a, b) => dir * norm(f(BOOK[a])).localeCompare(norm(f(BOOK[b])), 'es');
+  const noArt = (s) => s.replace(/^(el|la|los|las|un|una)\s+/i, '');   // como en una librería: «El Código Leonardo» va por la C
+  if (STK.sort === 'az') out = out.sort(by((b) => noArt(b.title), 1));
+  else if (STK.sort === 'za') out = out.sort(by((b) => noArt(b.title), -1));
+  else if (STK.sort === 'au') out = out.sort(by((b) => b.author, 1));
+  else if (STK.sort === 'ua') out = out.sort(by((b) => b.author, -1));
+  return out;
+}
+const stkToolsHTML = () => `<div class="stk-tools">
+  <input type="search" data-stkq placeholder="Buscar por título o autor" value="${esc(STK.q)}" aria-label="Buscar">
+  <div class="stk-sel"><select data-stkg aria-label="Filtrar por género"><option value="">Todos los géneros</option>${Object.entries(GENRES).map(([k, g]) => `<option value="${k}" ${STK.g === k ? 'selected' : ''}>${g.label}</option>`).join('')}</select>
+  <select data-stks aria-label="Ordenar">${Object.entries(SORTS).map(([k, l]) => `<option value="${k}" ${STK.sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>`;
+
+function stockRowsHTML(rowsAll, hasTable, onTbl) {
+  const order = stkApply(rowsAll.map(([id]) => id));
+  const byId = new Map(rowsAll);
+  const rows = order.map((id) => [id, byId.get(id)]);
+  if (!rowsAll.length) return '<p class="empty">El almacén está vacío. Haz un pedido en Pedidos.</p>';
+  if (!rows.length) return '<p class="empty">Ningún libro coincide con ese filtro.</p>';
+  return rows.length ? rows.map(([id, e]) => `<div class="stk"><span class="cv">${coverSVG(BOOK[id], 40, 60)}</span><div class="t"><b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small><div class="stk-act"><span class="pill">Tienda ${e.shop}</span><span class="pill">Almacén ${e.store}</span>${e.shop || !e.store ? '' : `<button type="button" class="btn small" data-act="place" data-id="${id}">Exponer</button>`}${hasTable ? `<button type="button" class="btn small ghost" data-act="toTable" data-id="${id}" title="Poner una copia en la mesa de novedades">${onTbl.has(id) ? `+1 a la mesa (×${onTbl.get(id)})` : 'A la mesa'}</button>` : ''}</div></div></div>`).join('') : '<p class="empty">El almacén está vacío. Haz un pedido en Pedidos.</p>';
+}
+
 function panelStock() {
+  stkRender = () => { const el = $('#stkList'); if (!el) return; const m = sellable(S); const all = [...m.entries()]; const hs = placed(S.furniture).filter((f) => f.type === 'shelf' || f.type === 'table'); const ot = new Map(); hs.filter((f) => f.type === 'table').flatMap((f) => f.books).forEach((id) => ot.set(id, (ot.get(id) ?? 0) + 1)); el.innerHTML = stockRowsHTML(all, hs.some((f) => f.type === 'table'), ot); };
   const map = sellable(S);
   const rows = [...map.entries()].sort((a, b) => BOOKS.findIndex((x) => x.id === a[0]) - BOOKS.findIndex((x) => x.id === b[0]));
   const holders = placed(S.furniture).filter((f) => f.type === 'shelf' || f.type === 'table');
@@ -1599,7 +1633,8 @@ function panelStock() {
     ${S.boxes.length ? `<h3>Recién llegado</h3>${S.boxes.length > 1 ? `<button type="button" class="btn primary wide" data-act="openAllBoxes">Abrir las ${S.boxes.length} cajas de golpe</button>` : ''}${S.boxes.map((b) => `<div class="boxcard"><svg viewBox="0 0 48 48" fill="none" stroke="#38211a" stroke-width="2.4" stroke-linejoin="round"><path d="M24 6 6 14v20l18 8 18-8V14z" fill="#d9a766"/><path d="M6 14l18 8 18-8M24 22v20"/></svg><div class="t"><b>Pedido del día ${b.day}</b><br>${boxBooks(b)} libros · ${b.items.length} ${b.items.length === 1 ? 'título' : 'títulos'}</div><button type="button" class="btn small primary" data-act="openBox" data-id="${b.id}">Abrir</button></div>`).join('')}` : ''}
     ${topHTML()}
     <h3>Existencias</h3>
-    ${rows.length ? rows.map(([id, e]) => `<div class="stk"><span class="cv">${coverSVG(BOOK[id], 40, 60)}</span><div class="t"><b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small><div class="stk-act"><span class="pill">Tienda ${e.shop}</span><span class="pill">Almacén ${e.store}</span>${e.shop || !e.store ? '' : `<button type="button" class="btn small" data-act="place" data-id="${id}">Exponer</button>`}${hasTable ? `<button type="button" class="btn small ghost" data-act="toTable" data-id="${id}" title="Poner una copia en la mesa de novedades">${onTbl.has(id) ? `+1 a la mesa (×${onTbl.get(id)})` : 'A la mesa'}</button>` : ''}</div></div></div>`).join('') : '<p class="empty">El almacén está vacío. Haz un pedido en Pedidos.</p>'}
+    ${stkToolsHTML()}
+    <div id="stkList">${stockRowsHTML(rows, hasTable, onTbl)}</div>
     <button type="button" class="btn wide" data-act="autoall" ${rows.some(([, e]) => !e.shop) && shelfFree(S) ? '' : 'disabled'}>Exponer un ejemplar de cada título</button>
     ${holders.map((f) => `<button type="button" class="btn wide ghost" data-act="furn" data-uid="${f.uid}">${f.type === 'shelf' ? 'Estantería' : 'Mesa de novedades'} (${f.type === 'shelf' ? f.rows.flat().length : f.books.length} libros)</button>`).join('')}`;
 }
@@ -2317,6 +2352,8 @@ document.addEventListener('error', (e) => {
   if (t?.tagName === 'IMG' && t.dataset.fb && !t.dataset.done) { t.dataset.done = '1'; t.classList.add('bust'); t.src = t.dataset.fb; }
 }, true);
 document.addEventListener('change', (e) => {
+  if (e.target.dataset?.stkg != null) { STK.g = e.target.value; stkRender?.(); return; }
+  if (e.target.dataset?.stks != null) { STK.sort = e.target.value; stkRender?.(); return; }
   if (e.target.id === 'doormatIn') { S.doormat = e.target.value.trim() || 'Bienvenid@s'; persist(); syncWorld(); toast('Felpudo actualizado.'); }
 });
 $('#importFile').addEventListener('change', async (e) => {
@@ -2335,6 +2372,7 @@ document.addEventListener('input', (e) => {
     const sm = e.target.closest('.mn-row')?.querySelector('small'); if (sm) sm.textContent = `${e.target.value}\u00a0%`;
     return;
   }
+  if (e.target.dataset?.stkq != null) { STK.q = e.target.value; stkRender?.(); return; }
   if (e.target.dataset?.notes != null) { S.notes = e.target.value; clearTimeout(window.__notesT); window.__notesT = setTimeout(persist, 400); return; }
   if (e.target.id === 'shopname') {
     S.shopName = e.target.value || 'Mi librería';
