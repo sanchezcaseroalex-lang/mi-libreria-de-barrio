@@ -13,6 +13,22 @@ const shuffle = (a) => [...a].sort(() => Math.random() - 0.5);
 
 // Libro del propio universo que se parece al objetivo (así nunca se nombran libros reales)
 const refCache = {};
+// Etiquetas que definen cada género: lo que un cliente cuenta de su libro debe ir en esa línea (nada de «reinos en guerra» si pidió romance)
+const GENRE_SIG = {
+  romantasia: ['romance', 'enemigos', 'hadas', 'dragones', 'magia'], epica: ['reinos', 'epica', 'magia', 'aventura', 'politica'],
+  thriller: ['crimen', 'psico', 'intriga', 'asesinos'], scifi: ['espacio', 'futuro', 'supervivencia'], terror: ['miedo', 'fantasmas', 'oscuro'],
+  negra: ['detectives', 'crimen'], romance: ['romance', 'verano', 'emociones', 'ternura'], historica: ['epoca', 'historia'], literaria: ['reflexion', 'emociones'],
+  humor: ['humor'], infantil: ['ternura', 'emociones'], ensayo: ['reflexion', 'habitos', 'superacion'], cocina: ['recetas'], viajes: ['viajes', 'superacion'],
+};
+export function coherentTags(b, n = 2, exclude = []) {
+  const sig = GENRE_SIG[b.genre] ?? [];
+  let cand = b.tags.filter((t) => !exclude.includes(t));
+  if (!cand.length) cand = b.tags.slice();
+  return shuffle(cand).sort((x, y) => (sig.includes(y) ? 1 : 0) - (sig.includes(x) ? 1 : 0)).slice(0, n);
+}
+const THINK = ['Pues…', 'A ver…', 'Déjame pensar…', 'Mmm…', 'Uf, a ver cómo lo explico…', 'Pues mira…'];
+const firstOfSaga = (b) => BOOKS.find((x) => x.saga?.id === b.saga.id && x.saga.n === 1);
+
 export function refTitle(id) {
   if (refCache[id]) return refCache[id];
   const b = BOOK[id];
@@ -330,7 +346,7 @@ export function openingLine(c) {
   if (c.type === 'unknownTitle') return `${intro} ${pick([`¿Tenéis «${c.unknown}»?`, `Vengo buscando «${c.unknown}».`, `Me lo recomendó una amiga: «${c.unknown}». ¿Lo tenéis?`, `¿Os queda «${c.unknown}»?`])}`.trim();
   if (c.type === 'unknownGenre') return `${intro} ${pick([`Busco algo de ${c.unknown}.`, `¿Tenéis libros de ${c.unknown}?`, `¿Tenéis una sección de ${c.unknown}?`])}`.trim();
   if (c.type === 'title') {
-    if (c.sequel) return `${intro} ${pick([`Acabo de terminar «${c.sequel}». ¿Tenéis la siguiente parte?`, `Me quedé con ganas después de «${c.sequel}». ¿Hay continuación?`, `¿Tenéis la continuación de «${c.sequel}»? No puedo esperar.`])}`.trim();
+    if (c.sequel) return `${intro} ${pick([`Acabo de terminar «${c.sequel}». ¿Tenéis la siguiente parte?`, `Me quedé con ganas después de «${c.sequel}». ¿Hay continuación?`, `Me leí «${c.sequel}» y venía a ver si tenéis el siguiente.`, `Terminé «${c.sequel}» ayer mismo y necesito seguir. ¿Tenéis el siguiente?`, `¿Tenéis la continuación de «${c.sequel}»? No puedo esperar.`])}`.trim();
     return `${intro} ${pick([`¿Tenéis «${b.title}»?`, `Vengo buscando «${b.title}».`, `Me han hablado maravillas de «${b.title}».`, `Busco «${b.title}», de ${b.author}.`, `Un amigo no deja de hablarme de «${b.title}».`])}`.trim();
   }
   const info = c.type === 'tags' ? tagText(c.revealed) : '';
@@ -376,11 +392,21 @@ export function playerOptions(c, ctx = {}) {
         ...(c.talk.asked.includes('order') ? [] : [{ id: 'order', text: 'No me queda ahora, pero puedo pedírtelo y mañana lo tienes.' }]),
       ];
     }
-    return [{ id: 'go', text: c.pickup ? '¡Claro, aquí lo tengo! Te lo traigo.' : '¡Claro! Ahora te lo traigo.' }];
+    const b0 = BOOK[c.target], out = [];
+    if (b0.saga && b0.saga.n > 1 && !c.sequel && !c.pickup && !c.returnFor && !c.talk.asked.includes('prev')) out.push({ id: 'prev', text: '¿Te has leído el anterior de la saga?' });
+    if (c.talk.prevAsked && c.unaware && !c.returnFor && b0.saga) {
+      const first = firstOfSaga(b0), sg = BOOKS.filter((x) => x.saga?.id === b0.saga.id && x.saga.n <= b0.saga.n);
+      if (!ctx.have || ctx.have(first.id)) out.push({ id: 'givefirst', text: `Empieza por el primero, «${first.title}», y cuando lo leas vuelves a por este.` });
+      if (ctx.have && sg.every((x) => ctx.have(x.id))) out.push({ id: 'bundle', text: b0.saga.n === 2 ? 'Llévate el primero y el segundo juntos.' : `Llévate los ${sg.length} primeros tomos juntos.` });
+    }
+    out.push({ id: 'go', text: c.talk.prevAsked && c.unaware ? 'Te traigo este igualmente, aunque no hayas leído el anterior.' : c.pickup ? '¡Claro, aquí lo tengo! Te lo traigo.' : '¡Claro! Ahora te lo traigo.' });
+    return out;
   }
   const book = BOOK[c.target];
   if (!c.talk.menu) {
-    const hit = shuffle(PROBES.filter((p) => p.tags.some((t) => book.tags.includes(t))))[0];
+    const sigOf = (p) => p.tags.some((t) => (GENRE_SIG[book.genre] ?? []).includes(t));
+    const hits = PROBES.filter((p) => p.tags.some((t) => book.tags.includes(t)));
+    const hit = shuffle(hits.filter(sigOf).length ? hits.filter(sigOf) : hits)[0];
     const miss = shuffle(PROBES.filter((p) => !p.tags.some((t) => book.tags.includes(t))))[0];
     c.talk.menu = shuffle([
       { id: 'open', text: '¿Qué estás pensando exactamente?' },
@@ -413,23 +439,33 @@ export function answer(c, optId) {
     c.refSaid = refTitle(c.target); c.talk.mood = 'contenta';
     return `${pick(v.like)} «${refTitle(c.target)}».`;
   }
+  if (optId === 'prev') {
+    c.talk.prevAsked = true;
+    if (c.unaware) { c.talk.mood = 'dudosa'; return pick(['Pues no… ¿hay uno anterior? No sabía que era una saga.', 'Ah, ¿este no es el primero? No tenía ni idea.', 'No lo he leído. ¿Hay que empezar por otro?']); }
+    c.talk.mood = 'contenta'; return pick(['Sí, claro, lo leí hace poco. Por eso vengo a por este.', 'Sí, sí, me lo terminé y quiero seguir.']);
+  }
+  if (optId === 'givefirst') {
+    const first = firstOfSaga(b);
+    c.returnFor = c.target; c.target = first.id; c.bookId = first.id; c.unaware = false; c.talk.mood = 'contenta';
+    return pick([`Vale, entonces dame «${first.title}». Cuando lo termine vuelvo a por el siguiente.`, `¡Buen consejo! Empiezo por «${first.title}» y ya vendré a por el otro.`]);
+  }
   if (optId === 'open') {
-    const ids = b.tags.slice().sort(() => Math.random() - 0.5).slice(0, 2);
+    const ids = coherentTags(b, 2, c.revealed);
     reveal(ids); c.talk.mood = 'neutra';
-    return `${pick(v.hmm)} Pues algo con ${tagText(ids)}.`;
+    return `${pick(THINK)} Algo con ${tagText(ids)}.`;
   }
   if (optId === 'who') {
-    const ids = b.tags.slice().sort(() => Math.random() - 0.5).slice(0, 2);
+    const ids = coherentTags(b, 2, c.revealed);
     reveal(ids); c.talk.mood = 'contenta';
-    return `${pick(v.yes)} Le encantan las historias con ${tagText(ids)}.`;
+    return `${pick(THINK)} Le encantan las historias con ${tagText(ids)}.`;
   }
-  if (optId === 'budget') { c.talk.mood = 'neutra'; return `${pick(v.hmm)} No más de ${c.budget} €, si puede ser.`; }
+  if (optId === 'budget') { c.talk.mood = 'neutra'; return `${pick(THINK)} No más de ${c.budget} €, si puede ser.`; }
   const probe = PROBES.find((p) => p.id === optId);
   const hits = b.tags.filter((t) => probe.tags.includes(t));
   if (hits.length) { reveal(hits.slice(0, 2)); c.talk.mood = 'contenta'; return `${pick(v.yes)} Con ${tagText(hits.slice(0, 2))}.`; }
-  const other = b.tags.filter((t) => !c.revealed.includes(t)).slice(0, 2);
+  const other = coherentTags(b, 2, c.revealed);
   reveal(other); c.talk.mood = 'dudosa';
-  return `${pick(v.hmm)} Más bien algo con ${tagText(other.length ? other : b.tags.slice(0, 2))}.`;
+  return `${pick(v.hmm)} Más bien algo con ${tagText(other)}.`;
 }
 
 export const sorryLine = (c) => pick(['Vaya, qué pena. Gracias igualmente.', 'Ay, qué lástima. Otro día será.', 'No pasa nada, gracias por decírmelo.']);
@@ -440,10 +476,14 @@ export function newCustomer(char, target, type) {
   const b = BOOK[target];
   const c = {
     charId: char.id, name: char.name, person: char.look, type, target, genre: b.genre, tries: 2, talk: { asked: [] },
-    revealed: type === 'tags' ? b.tags.slice().sort(() => Math.random() - 0.5).slice(0, 2) : [], bookId: target, tags: [],
+    revealed: type === 'tags' ? coherentTags(b, 2) : [], bookId: target, tags: [],
   };
   if (type === 'title') {
-    if (b.saga && b.saga.n > 1 && Math.random() < 0.6) c.sequel = BOOKS.find((x) => x.saga?.id === b.saga.id && x.saga.n === b.saga.n - 1)?.title;
+    if (b.saga && b.saga.n > 1) {
+      const roll = Math.random();
+      if (roll < 0.5) c.sequel = BOOKS.find((x) => x.saga?.id === b.saga.id && x.saga.n === b.saga.n - 1)?.title;   // ya leyó el anterior
+      else if (roll < 0.85) c.unaware = true;                                                                  // no sabe que hay uno anterior
+    }
   } else if (Math.random() < 0.72) {
     c.scenario = pick(char.age === 'niño' ? ['similar', 'similar', 'trip'] : ['gift', 'trip', 'similar', 'budget', 'mood', 'gift']);
     if (c.scenario === 'gift') c.who = pick(WHO);

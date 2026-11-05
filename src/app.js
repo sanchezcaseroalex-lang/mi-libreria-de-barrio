@@ -8,7 +8,7 @@ import {
   newGame, ITEMS, NETWORKS, XP_LEVELS, availableBooks, cozy, storageCount, shelfFree, shelfSlots, containers, furnById,
   inventory, countOf, buyFurniture, placeFurniture, storeFurniture, rotateFurniture, placeBook, takeBack, autoPlace, onDisplay, sellable, buyItem,
   orderBooks, pendingOrders, openShop, offer, dismiss, nextCustomer, nextDay, createAccount, canPost, postPhoto, postVideo,
-  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
+  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
 } from './game.js';
 import { newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
 import { HERO_LOOK } from './people3d.js';
@@ -22,7 +22,7 @@ import { showBook3D } from './viewer.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '2026-11-05 · complementos y e-readers';
+const BUILD = '2026-11-05 · sagas y conversaciones';
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -1102,6 +1102,16 @@ function talkOpt(id) {
     }, 'contenta');
     return;
   }
+  if (id === 'bundle') {
+    playerSays(e, said, () => clientSays(e, pickOne(['¡Ooh, los dos! ¡Me los llevo!', '¡Trato hecho! Empiezo la saga con todo.', '¿Todos juntos? ¡Sí, por favor!']), 'contenta', async () => {
+      closeDialog(); talking = false; busy = true;
+      const r = sellBundle(S);
+      if (r.error) { toast(r.error); busy = false; talking = true; talkAgain(e, c.line, 'neutra'); return; }
+      persist(); renderTop();
+      await finishCustomer(e, r, null);
+    }), 'contenta');
+    return;
+  }
   if (id === 'order') {
     playerSays(e, said, () => {
       c.talk.asked.push('order');
@@ -1241,9 +1251,12 @@ async function pickBook(id) {
     if (sc) world.face(world.hero, sc[0] + .5 - st[0], sc[1] + .5 - st[1]);
   }
   const e = attending;
-  const special = BOOK[id].ed ? await editionTalk(e, id) : false;
-  const format = BOOK[id].ed ? null : await formatTalk(e, id);
-  const r = offer(S, id, { special, format });
+  const bk = BOOK[id], cc = e.c;
+  const sc0 = evaluate(bk, cc), hesitate = sc0 === 1 && Math.random() < 0.5;
+  const interested = sc0 >= 1 && !hesitate && !(cc.budget && bk.price > cc.budget);   // lo que va a decidir offer(): si no lo quiere, no se habla de ediciones ni de tapas
+  const special = bk.ed && interested ? await editionTalk(e, id) : false;
+  const format = bk.ed || !interested ? null : await formatTalk(e, id);
+  const r = offer(S, id, { special, format, hesitate });
   if (r.error) { world.carry(world.hero, null); toast(r.error); busy = false; talking = true; talkAgain(e, e.c.line, 'dudosa'); return; }
   persist();
   renderTop();
@@ -1262,12 +1275,18 @@ async function cancelPick() {
   if (!fetching) return;
   fetching = false;
   closeSheet();
-  await heroToShop();
-  const st = heroStation();
-  if (st) { await routeTo(world.hero, [Math.floor(st[0]), Math.floor(st[1])], 3.2); await world.walkTo(world.hero, st[0], st[1], 3); }
+  try {
+    // si la animación del paseo se atasca, a los 6 s volvemos igualmente al mostrador
+    await Promise.race([(async () => {
+      await heroToShop();
+      const st = heroStation();
+      if (st) { await routeTo(world.hero, [Math.floor(st[0]), Math.floor(st[1])], 3.2); await world.walkTo(world.hero, st[0], st[1], 3); }
+    })(), wait(6000)]);
+  } catch { /* seguimos */ }
+  if (world.view !== 'shop') { world.setView('shop'); syncWorld(); placeHero(); world.hero.visible = true; }
   busy = false;
   talking = true;
-  talkAgain(attending, attending.c.line, 'dudosa');
+  if (attending) talkAgain(attending, attending.c.line, 'dudosa');
 }
 
 async function doDismiss(penalty = true) {
@@ -1525,7 +1544,9 @@ function showPicker() {
     return `<button type="button" class="slot ${out ? 'out' : ''}" ${out ? 'disabled' : `data-act="pickBook" data-id="${id}"`}>${coverSVG(b, 78, 117)}<b>${esc(b.title)}</b>${b.saga ? `<small class="saga">${esc(sagaLabel(b))}</small>` : ''}${S.settings.hard ? '' : `<span class="tags">${tagChips(b.tags.slice(0, 2))}</span>`}${out ? '<small style="color:#f6ecd9">agotado</small>' : `<em>${e.store}</em>`}</button>`;
   }).join('');
   openSheet(`<div class="sheet-h"><h2>Estantería del almacén</h2></div>
-    <div class="picker"><p class="quote small">${esc(c.name)}: “${esc(c.line)}”</p>
+    <div class="picker"><button type="button" class="btn wide ghost" data-act="cancelPick">‹ Volver sin libro</button>
+    ${c.type === 'title' && !c.pickup && (S.storage[c.target] ?? 0) <= 0 ? `<p class="warn">⚠ No te quedan ejemplares de «${esc(BOOK[c.target].title)}».</p>` : ''}
+    <p class="quote small">${esc(c.name)}: “${esc(c.line)}”</p>
     <p class="muted sub">Coge el libro que pide. Si te equivocas, el cliente te lo dirá.</p>
     <div class="shelfgrid">${slots}</div>
     <button type="button" class="btn wide ghost" data-act="cancelPick">Volver sin libro</button></div>`);
@@ -1572,7 +1593,7 @@ function panelStock() {
   panelEl.innerHTML = `
     <div class="pn-h"><h2>Almacén</h2><button type="button" class="x" data-act="tab" data-id="stock" aria-label="Cerrar">×</button></div>
     <p class="muted">${S.boxes.length ? `Recién llegado: <b>${S.boxes.length}</b> ${S.boxes.length === 1 ? 'caja' : 'cajas'} por abrir (toca una caja en la sala o pulsa Abrir).` : 'No hay cajas nuevas.'} Tienes ${storageCount(S)} libros guardados.</p>
-    ${S.boxes.length ? `<h3>Recién llegado</h3>${S.boxes.map((b) => `<div class="boxcard"><svg viewBox="0 0 48 48" fill="none" stroke="#38211a" stroke-width="2.4" stroke-linejoin="round"><path d="M24 6 6 14v20l18 8 18-8V14z" fill="#d9a766"/><path d="M6 14l18 8 18-8M24 22v20"/></svg><div class="t"><b>Pedido del día ${b.day}</b><br>${boxBooks(b)} libros · ${b.items.length} ${b.items.length === 1 ? 'título' : 'títulos'}</div><button type="button" class="btn small primary" data-act="openBox" data-id="${b.id}">Abrir</button></div>`).join('')}` : ''}
+    ${S.boxes.length ? `<h3>Recién llegado</h3>${S.boxes.length > 1 ? `<button type="button" class="btn primary wide" data-act="openAllBoxes">Abrir las ${S.boxes.length} cajas de golpe</button>` : ''}${S.boxes.map((b) => `<div class="boxcard"><svg viewBox="0 0 48 48" fill="none" stroke="#38211a" stroke-width="2.4" stroke-linejoin="round"><path d="M24 6 6 14v20l18 8 18-8V14z" fill="#d9a766"/><path d="M6 14l18 8 18-8M24 22v20"/></svg><div class="t"><b>Pedido del día ${b.day}</b><br>${boxBooks(b)} libros · ${b.items.length} ${b.items.length === 1 ? 'título' : 'títulos'}</div><button type="button" class="btn small primary" data-act="openBox" data-id="${b.id}">Abrir</button></div>`).join('')}` : ''}
     ${topHTML()}
     <h3>Existencias</h3>
     ${rows.length ? rows.map(([id, e]) => `<div class="stk"><span class="cv">${coverSVG(BOOK[id], 40, 60)}</span><div class="t"><b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small><div class="stk-act"><span class="pill">Tienda ${e.shop}</span><span class="pill">Almacén ${e.store}</span>${e.shop || !e.store ? '' : `<button type="button" class="btn small" data-act="place" data-id="${id}">Exponer</button>`}${hasTable && !onTbl.has(id) ? `<button type="button" class="btn small ghost" data-act="toTable" data-id="${id}" title="Poner en la mesa de novedades">A la mesa</button>` : ''}</div></div></div>`).join('') : '<p class="empty">El almacén está vacío. Haz un pedido en Pedidos.</p>'}
@@ -2073,6 +2094,7 @@ const act = {
   furn: ({ uid }) => furnSheet(uid),
   takeback: ({ cid, i, uid }) => { takeBack(S, cid, Number(i)); persist(); syncWorld(); furnSheet(uid); renderPanel(); },
   openBox: ({ id }) => openBoxGame(id),
+  openAllBoxes: () => { if (busy || !S.boxes.length) return; const n = openAllBoxes(S); persist(); syncWorld(); renderPanel(); renderTop(); toast(`${n} libros guardados en el almacén. Puedes exponer uno de cada título.`); },
   boxAll: () => { if (boxGame) { boxGame.stage = 2; renderBoxGame(); } },
   takeFromBox: ({ id }) => { if (boxGame) { boxGame.taken.add(id); renderBoxGame(); } },
   finishBox: () => finishBox(),

@@ -1,5 +1,5 @@
 import { addPts, initPass, TIERS, tierOf, EDITIONS, applyEditions } from './pass.js';
-import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale, sectionOf } from './books.js';
+import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale, sectionOf, SAGAS } from './books.js';
 import { newCustomer, newUnfillable, pickChar, bookWeights, thanksLine, nopeLine, pickupCustomer, parcelCustomer, CAST, CAST_BY_ID } from './cast.js';
 import { FURN, placed, placementError, cellsOf, dims, EXPANSIONS, setBounds } from './layout.js';
 
@@ -233,6 +233,12 @@ export function onDisplay(s) {
 
 export const boxBooks = (b) => b.items.reduce((a, i) => a + i.qty, 0);
 export const unopenedBooks = (s) => s.boxes.reduce((a, b) => a + boxBooks(b), 0);
+// Abre todas las cajas de golpe (sin minijuego)
+export function openAllBoxes(s) {
+  let n = 0;
+  for (const b of [...s.boxes]) { openBox(s, b.id); n += b.items.reduce((t, it) => t + it.qty, 0); }
+  return n;
+}
 export function openBox(s, boxId) {
   const i = s.boxes.findIndex((b) => b.id === boxId);
   if (i < 0) return null;
@@ -673,7 +679,8 @@ export function offer(s, bookId, opts = {}) {
     }
     return { sold: false, score, left: false, message: `${nopeLine(c)} ¿Tienes otra cosa?` };
   }
-  if (score === 1 && Math.random() < 0.5) {
+  if (c.unaware && !c.returnFor && score === 3) score = 2;   // se lleva el segundo sin haber leído el primero: no es una venta redonda
+  if (score === 1 && (opts.hesitate ?? Math.random() < 0.5)) {
     c.tries--;
     return { sold: false, score, left: c.tries <= 0, message: 'Parece interesante… pero no me acaba de convencer.' };
   }
@@ -701,7 +708,30 @@ export function offer(s, bookId, opts = {}) {
     s.rep += 1;
   }
   if (c.pickup) { s.encargos = (s.encargos ?? []).filter((e) => e.uid !== c.encargoUid); s.rep += 1; s.followers += 1; }
+  if (c.returnFor) { addEncargo(s, { charId: c.charId, name: c.name, person: c.person, target: c.returnFor }); s.rep += 1; }   // vuelve a por el siguiente tomo
   return { sold: true, special, format, score, price, tip, stars, review: post, reads, fetched: place.fetched, message: thanksLine(c) };
+}
+
+// Vender de golpe el primer tomo de una saga y los siguientes hasta el que pedía el cliente
+export function sellBundle(s) {
+  const c = s.current, b = c && BOOK[c.target];
+  if (!b?.saga) return { error: 'No hay saga.' };
+  const ids = SAGAS.find((x) => x.id === b.saga.id).ids.slice(0, b.saga.n);
+  const have = sellable(s);
+  if (!ids.every((id) => (have.get(id)?.shop ?? 0) + (have.get(id)?.store ?? 0) > 0)) return { error: 'No te quedan todos los tomos.' };
+  let price = 0, post = null;
+  for (const id of ids) {
+    const bk = BOOK[id], place = takeCopy(s, id);
+    price += Math.round(bk.price * (place?.onTable ? 1.1 : 1));
+    s.soldBy ??= {}; s.soldBy[id] = (s.soldBy[id] ?? 0) + 1;
+    s.today.sales++; s.stats ??= { sold: 0, regulars: {} }; s.stats.sold++;
+    addPts(s, 10); gainXp(s, 13);
+    post = maybeReview(s, bk, 5) ?? post;
+  }
+  const tip = Math.round(price * 0.08 * 10) / 10;
+  s.money += price + tip; s.today.revenue += price; s.today.tips += tip; s.rep += 2 + ids.length;
+  if (c.charId) s.stats.regulars[c.charId] = true;
+  return { sold: true, score: 3, price, tip, stars: 5, review: post, reads: false, bundle: ids.length, message: thanksLine(c) };
 }
 
 // penalty = false cuando el cliente pedía algo que de verdad no tenías: se va sin enfado
