@@ -22,7 +22,7 @@ import { showBook3D } from './viewer.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = 'v18 · escaparate, banco y ordenador';
+const BUILD = 'v19 · ordenador en el mostrador';
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -1123,7 +1123,7 @@ function pcRows(q) {
   }).join('');
 }
 function openInventory(e) {
-  const c = e.c, q0 = c.type === 'title' && BOOK[c.target] ? BOOK[c.target].title : '';
+  const c = e.c, q0 = c.type === 'title' && BOOK[c.target] ? BOOK[c.target].title : c.type === 'unknownTitle' ? (c.unknown ?? '') : '';
   openSheet(`<div class="sheet-h"><h2>🖥 Ordenador del mostrador</h2></div>
     <div class="pc"><p class="muted">Inventario de la librería. ${q0 ? `Buscando «${esc(q0)}».` : ''}</p>
     <input type="search" data-pcq placeholder="Buscar por título o autor" value="${esc(q0)}">

@@ -377,6 +377,8 @@ export function playerOptions(c, ctx = {}) {
   c.talk ??= { asked: [] };
   const limit = ctx.limit ?? 3;
   if (isUnknown(c)) {
+    // antes de decir que no lo tienes, se mira en el ordenador
+    if (ctx.pc && !c.talk.pcChecked) return [{ id: 'pc', text: 'Espérate, que lo miro en el ordenador.' }];
     return [
       { id: 'sorry', text: 'Lo siento, eso no lo tengo.' },
       ...(c.talk.asked.includes('alt') ? [] : [{ id: 'alt', text: 'Eso no lo tengo, pero puedo recomendarte algo parecido.' }]),
@@ -395,7 +397,7 @@ export function playerOptions(c, ctx = {}) {
     }
     const b0 = BOOK[c.target], out = [];
     if (b0.saga && b0.saga.n > 1 && !c.sequel && !c.pickup && !c.returnFor && !c.talk.asked.includes('prev')) out.push({ id: 'prev', text: '¿Te has leído el anterior de la saga?' });
-    if (ctx.pc && !c.talk.pcChecked && !c.pickup) out.push({ id: 'pc', text: 'Déjame mirarlo en el ordenador.' });
+    if (ctx.pc && !c.talk.pcChecked && !c.pickup) out.push({ id: 'pc', text: 'Espérate, que lo miro en el ordenador.' });
     if (c.talk.prevAsked && c.unaware && !c.returnFor && b0.saga && checked) {
       const first = firstOfSaga(b0), sg = BOOKS.filter((x) => x.saga?.id === b0.saga.id && x.saga.n <= b0.saga.n);
       if (!ctx.have || ctx.have(first.id)) out.push({ id: 'givefirst', text: `Empieza por el primero, «${first.title}», y cuando lo leas vuelves a por este.` });
