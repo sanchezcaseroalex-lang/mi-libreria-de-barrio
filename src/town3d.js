@@ -71,19 +71,21 @@ function shopFront(x, z, name = 'La Tinta y el Té') {
   boxAt(g, .6, 1.3, .6, M('#8a6a5a', .95), -W * .3, H + rh * .35, -.5, .02);
   // escaparate grande con libros
   const front = D / 2 + .02;
-  const win = (cx) => {
+  const win = (cx, own = false) => {
     boxAt(g, 2.2, 1.9, .1, mOak, cx, .75, front, .02);
-    const glass = new THREE.Mesh(new THREE.PlaneGeometry(2, 1.7), new THREE.MeshBasicMaterial({ color: '#ffe3a8' })); glass.position.set(cx, 1.6, front + .07); g.add(glass);
-    for (let i = 0; i < 9; i++) { const bk = box(.16, .5 + (i % 3) * .1, .1, M(pick(['#c8566b', '#3a5a8a', '#e0a93b', '#5c9457', '#7a4aa6', '#a2453a']), .8), .01); bk.position.set(cx - .85 + i * .21, 1.0 + .3 + (i % 3) * .05, front + .1); g.add(bk); }
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(2, 1.7), new THREE.MeshBasicMaterial(own ? { color: '#ffe3a8', transparent: true, opacity: .14 } : { color: '#ffe3a8' })); glass.position.set(cx, 1.6, front + (own ? .42 : .07)); g.add(glass);
+    if (own) { const bp = new THREE.Mesh(new THREE.PlaneGeometry(2, 1.7), M('#6a4a34', .9)); bp.position.set(cx, 1.6, front + .06); g.add(bp); [1.05, 1.5, 1.95].forEach((y) => boxAt(g, 1.96, .05, .4, mOak, cx, y, front + .08, .005)); }
+    if (!own) for (let i = 0; i < 9; i++) { const bk = box(.16, .5 + (i % 3) * .1, .1, M(pick(['#c8566b', '#3a5a8a', '#e0a93b', '#5c9457', '#7a4aa6', '#a2453a']), .8), .01); bk.position.set(cx - .85 + i * .21, 1.0 + .3 + (i % 3) * .05, front + .1); g.add(bk); }
     boxAt(g, 2.2, .08, .3, mOak, cx, .7, front + .12, 0.01);
   };
-  win(-2.3); win(2.3);
+  win(-2.3, true); win(2.3);
+  g.userData.display = new THREE.Group(); g.add(g.userData.display);   // aquí se colocan los artículos del escaparate del jugador
   // puerta doble
   boxAt(g, 1.9, 2.5, .1, mDark, 0, 0, front, .02);
   [-1, 1].forEach((s) => { boxAt(g, .86, 2.3, .08, mPine, s * .47, .05, front + .06, .02); const gl = new THREE.Mesh(new THREE.PlaneGeometry(.55, 1.1), M('#bfe0ea', .15)); gl.position.set(s * .47, 1.45, front + .12); g.add(gl); });
   // toldo a rayas
   const aw = canvasTex(256, 64, (c, w, h) => { for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#f3e7c9' : '#c8566b'; c.fillRect(i * w / 8, 0, w / 8, h); } });
-  const awning = new THREE.Mesh(new THREE.BoxGeometry(W - .2, .12, 1.4), new THREE.MeshStandardMaterial({ map: aw, roughness: .9 })); awning.position.set(0, 3.0, front + .65); awning.rotation.x = .28; awning.castShadow = true; g.add(awning);
+  const awning = new THREE.Mesh(new THREE.BoxGeometry(W - .2, .12, 1.4), new THREE.MeshStandardMaterial({ map: aw, roughness: .9 })); awning.position.set(0, 3.0, front + .65); awning.rotation.x = .28; awning.castShadow = true; g.userData.awning = awning; g.add(awning);
   // rótulo
   const sign = canvasTex(512, 128, (c, w, h) => {
     c.fillStyle = '#4a2f24'; c.fillRect(0, 0, w, h); c.strokeStyle = '#e3b04b'; c.lineWidth = 6; c.strokeRect(8, 8, w - 16, h - 16);
@@ -134,5 +136,5 @@ export function buildTown(shopName) {
   const glow = new THREE.PointLight('#ffc27a', 14, 12, 2); glow.position.set(2.2, 2, -4 - 1.2 + .4); group.add(glow);
   // rutas para los paseantes (aceras): de punta a punta
   const walks = [[-30, 2.4, 30, 2.4], [30, -2.5, -30, -2.5], [-10.6, -18, -10.6, 20], [10.6, 20, 10.6, -18], [-28, 3, -8, 3], [28, -2, 8, -2]];
-  return { group, doorX: 2.2, doorZ: -4 - 1.2 + .4, size: { w: W, d: D }, walks, glow };
+  return { shop, group, doorX: 2.2, doorZ: -4 - 1.2 + .4, size: { w: W, d: D }, walks, glow };
 }

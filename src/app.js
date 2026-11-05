@@ -8,9 +8,9 @@ import {
   newGame, ITEMS, NETWORKS, XP_LEVELS, availableBooks, cozy, storageCount, shelfFree, shelfSlots, containers, furnById,
   inventory, countOf, buyFurniture, placeFurniture, storeFurniture, rotateFurniture, placeBook, takeBack, autoPlace, onDisplay, sellable, buyItem,
   orderBooks, pendingOrders, openShop, offer, dismiss, nextCustomer, nextDay, createAccount, canPost, postPhoto, postVideo,
-  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, pruneWindow, setWindow, windowFilled, windowBoost, WIN_SLOTS, windowOwned, directSale, LOANS, LOAN_LEVEL, loanInfo, takeLoan, repayLoan, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
+  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, canGift, giveGift, giftStock, discardFurniture, nudgeFurniture, pruneWindow, setWindow, windowFilled, windowBoost, WIN_SLOTS, windowOwned, directSale, LOANS, LOAN_LEVEL, loanInfo, takeLoan, repayLoan, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
 } from './game.js';
-import { newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
+import { genderize, setHeroGender, newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
 import { HERO_LOOK } from './people3d.js';
 import { runOpenBox, runPackBox } from './boxscene.js';
 import { initAudio, setVolumes, sfx, blip, startMusic, isMusicPlaying } from './audio.js';
@@ -19,10 +19,11 @@ import { createWorld, ARTS, POSTER_SIZES, ROT_Y, STORE_INFO } from './world.js';
 import { FLOORS, WALLS, clearBookCaches } from './kit3d.js';
 import { SEASON, TIERS, EDITIONS, SKINS, skinName, initPass, tierOf, claimable, applyEditions } from './pass.js';
 import { showBook3D } from './viewer.js';
+import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.21.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.22.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -112,6 +113,9 @@ function toast(msg) {
   const el = document.createElement('div');
   el.className = 'toast'; sfx('pop');
   el.textContent = msg;
+  const bar = document.getElementById('bar');
+  if (bar && !bar.hidden) { const top = bar.getBoundingClientRect().top; if (top > 120) el.style.bottom = `${Math.round(innerHeight - top + 12)}px`; }   // encima del menú, sin tapar los libros
+  el.style.zIndex = '3000';
   document.body.append(el);
   setTimeout(() => el.classList.add('out'), 2300);
   setTimeout(() => el.remove(), 2800);
@@ -190,7 +194,7 @@ function renderTop() {
     <div class="hud-r"><b class="coin">${money(S.money)}</b><span class="lvl">Nivel ${S.level}</span><div class="xp"><i style="width:${pct}%"></i></div></div>`;
   const items = [['shop', 'Tienda'], ['stock', 'Almacén', 'box'], ['orders', 'Pedidos', 'order'], ['upgrades', 'Mejoras', 'spark'], ['social', 'Redes', 'chat'], ['settings', 'Ajustes', 'cog']];
   $('#icons').innerHTML = items.map(([id, label, ic]) => {
-    const badge = id === 'social' ? webTodo(S) : id === 'stock' ? S.boxes.length : id === 'upgrades' ? inventory(S).length + claimable(S) : 0;
+    const badge = id === 'social' ? webTodo(S) : id === 'stock' ? S.boxes.length : id === 'upgrades' ? unseenUpg() : 0;
     const on = (id === 'stock' && world.view === 'store') || (id === 'shop' && world.view === 'shop' && !panelOpen && !editing && false) || ((panelOpen || editing) && ((editing && id === 'shop') || (!editing && tab === id)));
     return `<button type="button" class="${on ? 'on' : ''}" data-act="${id === 'settings' ? 'openSettings' : 'tab'}" data-id="${id}" title="${label}" aria-label="${label}">${icon(ic ?? id)}${badge ? `<em>${badge}</em>` : ''}</button>`;
   }).join('');
@@ -234,7 +238,15 @@ function renderPassBtn() {
   <span class="pb-t"><b>OTOÑO</b>Temporada 1</span><span class="pb-n">Nivel ${t}</span><i class="pb-bar"><b style="width:${pct}%"></b></i>${c ? `<em>${c}</em>` : ''}`;
 }
 
+// Novedades de Mejoras que aún no has visto: al entrar en la pestaña se dan por vistas (las pongas o no)
+function unseenUpg() {
+  const seen = new Set(S.seenFurn ?? []);
+  return inventory(S).filter((f) => !seen.has(f.uid)).length + Math.max(0, claimable(S) - (S.seenClaim ?? 0));
+}
+function markUpgSeen() { S.seenFurn = inventory(S).map((f) => f.uid); S.seenClaim = claimable(S); }
+
 function renderPanel() {
+  if (panelOpen && tab === 'upgrades' && !editing) markUpgSeen();
   barEl.classList.toggle('open', panelOpen || editing);
   barEl.classList.toggle('edit', editing);
   if (editing) renderEditPanel();
@@ -408,7 +420,7 @@ function browseSpots() {
   };
   for (const f of placed(S.furniture)) {
     if (f.type === 'shelf') { const [dx, dz] = frontDir(f); frontCells(f).forEach((c) => add(c, [-dx, -dz])); }
-    else if (['table', 'cat', 'plant', 'coffee', 'ereader', 'escaparate'].includes(f.type)) {
+    else if (['table', 'cat', 'coffee', 'ereader', 'escaparate'].includes(f.type)) {
       for (const [c, r] of cellsOf(f)) for (const [dc, dr] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) add([c + dc, r + dr], [-dc, -dr]);
     }
   }
@@ -423,7 +435,12 @@ function takeSpot() {
 }
 
 async function exitShop(e) {
-  if (e.p.parent) await routeTo(e.p, entryCell(), rnd(2, 2.5), 'shop');
+  if (e.p.parent) {
+    await routeTo(e.p, entryCell(), rnd(2, 2.5), 'shop');
+    const ec = entryCell();
+    // si no había camino libre, cruza en línea recta hasta la puerta en vez de desaparecer a mitad de la tienda
+    if (e.p.parent && Math.hypot(e.p.position.x - (ec[0] + .5), e.p.position.z - (ec[1] + .5)) > 1.5) await world.walk(e.p, [[ec[0], ec[1]]], 2.2);
+  }
   world.removePerson(e.p);
 }
 
@@ -445,6 +462,22 @@ async function updateLine() {
       }
     });
   });
+}
+
+// Un curioso se sienta en un sillón o sofá a leer un rato (se queda sentado hasta cerrar)
+async function goRead(e, tok) {
+  const chair = sitCell();
+  if (!chair || S.nook) return false;
+  const pass = makePassable(blockedSet(S.furniture));
+  const seat = seatCell(chair, S.furniture);
+  const pts = routePoints(pass, { x: e.p.position.x, z: e.p.position.z }, seat);
+  if (!pts) return false;
+  await world.walkRoute(e.p, pts, 2.2, (x, z) => pass(Math.floor(x), Math.floor(z)));
+  if (tok !== dayTok || S.nook) return false;
+  S.nook = { person: e.p.userData.look, bookId: null };
+  world.removePerson(e.p);
+  syncWorld();
+  return true;
 }
 
 // Un curioso coge un libro de una estantería, va al mostrador y paga solo (sin conversación)
@@ -502,6 +535,7 @@ async function runShopper(e, tok) {
       await e.done;
     } else {
       free();
+      if (e.ambient && tok === dayTok && !S.nook && Math.random() < 0.3 && (await goRead(e, tok))) return;
       if (e.ambient && tok === dayTok && S.level >= 2 && Math.random() < 0.4) await directBuy(e, tok);
       await exitShop(e);
     }
@@ -1044,7 +1078,7 @@ const heroBase = () => HERO_BY_ID[S.hero?.base] ?? HERO_BASES[0];
 const heroName = () => S.hero?.name || 'Tú';
 const heroImg = (expr = 'neutra') => `arte/retratos/${heroBase().id}-${expr}.webp`;
 const heroBust = () => (heroBustCache ??= world.portrait(heroBase().look));
-function applyHero() { heroBustCache = null; world.setHeroLook(heroBase().look); }
+function applyHero() { setHeroGender(heroBase().gender); heroBustCache = null; world.setHeroLook(heroBase().look); }
 
 function dlgOpen() { dlg.hidden = false; requestAnimationFrame(() => dlg.classList.add('on')); }
 function closeDialog() {
@@ -1088,6 +1122,7 @@ dlg.addEventListener('click', (e) => {
 // Habla el cliente (ilustración a la izquierda)
 function clientSays(e, text, expr, next) {
   const c = e.c;
+  text = genderize(text);
   setImg(dlgL, `arte/retratos/${c.charId}-${expr ?? 'neutra'}.webp`, e.bust);
   dlg.classList.add('left-on'); dlg.classList.remove('right-on');
   dlgText(c.name, text, next);
@@ -1241,6 +1276,29 @@ function formatTalk(e, id) {
   });
 }
 
+// Regalo a un cliente habitual (ya ha venido varias veces): eliges algo de tu inventario
+let giftRes = null;
+function giftTalk(e) {
+  return new Promise((res) => {
+    const c = e.c;
+    dlgOpen();
+    playerSays(e, pickOne([`Oye, como ya eres de la casa, te regalo algo.`, `Por ser tan buen cliente, toma un detallito de parte de la librería.`]), () => {
+      clearInterval(dlgTimer); dlgNext = null; dlgTyping = false;
+      $('.dlg-text').textContent = '¿Qué le regalas?';
+      $('.dlg-opts').innerHTML = giftStock(S).slice(0, 6).map((g) => `<button type="button" class="opt" data-act="gift" data-id="${g.id}">${g.emoji} ${esc(g.name)} (tienes ${S.goods[g.id]})</button>`).join('') + '<button type="button" class="link" data-act="gift" data-id="">Mejor no</button>';
+      giftRes = (id) => {
+        giftRes = null;
+        if (!id) { closeDialog(); setTimeout(() => res(false), 300); return; }
+        const r2 = giveGift(S, c.charId, id);
+        if (!r2) { closeDialog(); setTimeout(() => res(false), 300); return; }
+        persist(); renderTop();
+        const line = r2.liked ? pickOne(['¡Qué detalle! Justo lo que me gusta.', 'Ay, ¡me encanta! Gracias de corazón.', '¡No me lo puedo creer, qué bonito!']) : pickOne(['Qué amable, muchas gracias.', 'Ay, no hacía falta, ¡gracias!', 'Pues qué detalle, gracias.']);
+        clientSays(e, line, 'contenta', () => { closeDialog(); toast(r2.liked ? `Le ha encantado «${r2.good.name}». ¡+4 de reputación!` : `Le has regalado «${r2.good.name}». +1 de reputación.`); setTimeout(() => res(true), 350); });
+      };
+    }, 'contenta');
+  });
+}
+
 // Tras comprar un libro, el cliente puede pedir un complemento (o un lector electrónico si tienes el expositor)
 let upRes = null;
 function upsellTalk(e, it, missing) {
@@ -1375,8 +1433,10 @@ async function finishCustomer(e, r, id) {
       const u = upsellFor(S);
       if (u) { const ok = await upsellTalk(e, u.item, u.missing); if (ok && !u.missing) { extra = sellGood(S, u.item.id); persist(); renderTop(); } }
     }
+    if (canGift(S, e.c)) await giftTalk(e);
     world.say(p, `${r.message}  +${r.price + r.tip + extra} €`, 'happy'); buzz(25); sfx('coin');
-    await wait(1200);
+    toast(r.bundle ? `Vendidos ${r.bundle} libros · +${r.price + r.tip + extra} €` : `Vendido${id && BOOK[id] ? ` «${BOOK[id].title}»` : ''} · +${r.price + r.tip + extra} €${extra ? ` (con extra: ${extra} €)` : ''}`);
+    await wait(1800);
     world.carry(world.hero, null);
     await wait(600);
   } else {
@@ -1513,7 +1573,7 @@ function renderEditPanel() {
     const inv = inventory(S);
     body = `
       <p class="hint">${placedSel ? `<b>${FURN[sel.type].name}</b> seleccionado: arrástralo para moverlo.` : 'Arrastra un mueble a la tienda o toca uno ya colocado.'}</p>
-      ${placedSel ? `<div class="selbar">${FURN[sel.type].norot ? '' : '<button type="button" class="btn small" data-act="rotate">Girar</button>'}${FURN[sel.type].fixed ? '' : '<button type="button" class="btn small" data-act="storeSel">Guardar</button>'}</div>` : ''}
+      ${placedSel ? `<div class="selbar">${FURN[sel.type].norot ? '' : '<button type="button" class="btn small" data-act="rotate">Girar</button>'}${FURN[sel.type].fixed ? '' : '<button type="button" class="btn small" data-act="storeSel">Guardar</button>'}</div><div class="selbar"><span class="muted small">Mover:</span><button type="button" class="btn small" data-act="nudge" data-dx="-1" data-dy="0" aria-label="Izquierda">←</button><button type="button" class="btn small" data-act="nudge" data-dx="0" data-dy="-1" aria-label="Arriba">↑</button><button type="button" class="btn small" data-act="nudge" data-dx="0" data-dy="1" aria-label="Abajo">↓</button><button type="button" class="btn small" data-act="nudge" data-dx="1" data-dy="0" aria-label="Derecha">→</button></div>` : ''}
       <p class="kick sub">Inventario</p>
       <div class="tray">${inv.length ? inv.map((f) => `<div class="tile" data-tray="${f.uid}">${icon(f.type, 'tile-ic')}<small>${FURN[f.type].name}${f.skin ? ` · ${skinName(f.type, f.skin)}` : ''}</small></div>`).join('') : '<p class="empty">Vacío. Compra muebles en Mejoras.</p>'}</div>`;
   } else if (editTab === 'suelo') {
@@ -1627,6 +1687,29 @@ function showPicker() {
 
 /* ---------- Escaparate: huecos libres ---------- */
 
+// Sale a la calle y mira el escaparate con lo que has colocado
+async function viewWindowOutside(uidv) {
+  const f = furnById(S, uidv);
+  if (!f || busy) return;
+  closeSheet(); busy = true; panelOpen = false; renderPanel();
+  document.body.classList.add('intro');
+  wipeEl.classList.add('on'); await wait(380);
+  world.setView('town'); world.stopPedestrians();
+  world.setTownDisplay((f.slots ?? []).map((k) => (k && windowOwned(S, k) ? k : null)));
+  world.focusFacade();
+  await wait(150); wipeEl.classList.remove('on'); await wait(250);
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.id = 'outBack'; btn.className = 'btn primary'; btn.textContent = '‹ Volver a la tienda';
+  document.body.append(btn);
+  await new Promise((res) => { btn.onclick = res; });
+  btn.remove();
+  wipeEl.classList.add('on'); await wait(380);
+  world.setView('shop'); syncWorld(); placeHero(); world.hero.visible = true;
+  document.body.classList.remove('intro'); busy = false;
+  await wait(150); wipeEl.classList.remove('on'); await wait(250);
+  renderPanel();
+}
+
 function winCell(key) {
   if (!key) return '<span class="wplus">+</span>';
   const [k, id] = key.split(':');
@@ -1641,7 +1724,8 @@ function windowSheet(uidv) {
   openSheet(`${sheetHead('Escaparate')}
     <p class="muted">Toca un hueco para poner lo que quieras: libros, complementos y figuritas. Lo que expones <b>no se gasta</b>, pero tienes que tenerlo en la tienda o en el almacén.</p>
     <p class="note">Ahora luces <b>${windowFilled(S)}</b> artículos: atraes <b>+${windowBoost(S)}</b> ${windowBoost(S) === 1 ? 'cliente' : 'clientes'} al día. Cada 4 artículos, un cliente más (máximo 3).</p>
-    <div class="wgrid">${rows}</div>`);
+    <div class="wgrid">${rows}</div>
+    <button type="button" class="btn wide primary" data-act="viewWindow" data-uid="${uidv}">👀 Ver el escaparate desde la calle</button>`);
 }
 function winItemsHTML(uidv, i) {
   const q = norm(STK.q);
@@ -1880,7 +1964,7 @@ function panelUpgrades() {
   panelEl.innerHTML = `
     <div class="pn-h"><h2>Nivel ${S.level}</h2><button type="button" class="x" data-act="tab" data-id="upgrades" aria-label="Cerrar">×</button></div>
     <p class="muted">${next ? `Te faltan ${next - S.xp} puntos para el nivel ${S.level + 1}.` : 'Has llegado al nivel máximo.'} Acogedor: ${'♥'.repeat(Math.min(10, Math.round(cozy(S) / 2))) || '–'}</p>
-    ${inv.length ? `<p class="note">Tienes <b>${inv.length}</b> ${inv.length === 1 ? 'mueble' : 'muebles'} sin colocar.</p><button type="button" class="btn primary wide" data-act="decor">Ir a decorar</button>` : ''}
+    ${inv.length ? `<p class="note">Tienes <b>${inv.length}</b> ${inv.length === 1 ? 'mueble' : 'muebles'} sin colocar.</p><div class="ups">${inv.map((f) => `<div class="up">${icon(f.type)}<div><b>${FURN[f.type].name}</b><small>Sin colocar</small></div><button type="button" class="btn small ghost2" data-act="discard" data-uid="${f.uid}">Tirar</button></div>`).join('')}</div><button type="button" class="btn primary wide" data-act="decor">Ir a decorar</button>` : ''}
     ${passCard()}
     ${storyCard()}
     <h3>Ampliar la tienda</h3><div class="ups">${exps}</div>
@@ -1921,6 +2005,7 @@ const G = {
   star: '<path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9L3.5 9.7l5.9-.8z"/>',
   web: '<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
 };
+const heroAvatarImg = () => { const hb = heroBase(); return `<img src="arte/retratos/${hb.id}-neutra.webp" data-fb="${heroBust()}" alt="">`; };
 const hue = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
 const phoneTime = () => {
   if (S.phase === 'evening') return '20:30';
@@ -1986,7 +2071,7 @@ function appPlumas() {
       return `<div class="tw"><div class="pic" style="background:hsl(${hue(p.user)} 45% 48%)">${esc(p.user[1]?.toUpperCase() ?? '?')}</div><div><span class="nm">${esc(niceName(p.user))}</span> <span class="hd">${esc(p.user)} · ${ago(p.day)}</span><p>${stars(p.stars)} ${esc(p.text)}</p>
         <div class="acts"><span>${svgi(G.comment)}${Math.max(0, Math.floor(p.likes / 6))}</span><span>${svgi(G.rt)}${Math.floor(p.likes / 3)}</span><span class="lk">${svgi(G.heart, 'currentColor')}${p.likes}</span><span>${svgi(G.share)}</span></div></div></div>`;
     }).join('') : '<div class="signup"><p>Aún no hay plumas. Cuando los clientes se lleven un libro, algunos dejarán su reseña aquí.</p></div>';
-  return `<div class="pl">${statusBar(false)}<div class="app-top"><span class="avt">${esc((S.social.pluma.handle || 'T')[0].toUpperCase())}</span>${svgi(G.feather)}</div>
+  return `<div class="pl">${statusBar(false)}<div class="app-top"><span class="avt avp">${heroAvatarImg()}</span>${svgi(G.feather)}</div>
     <div class="app-body">${body}</div>
     <div class="app-nav">${[G.home, G.search, G.bell, G.mail].map((g, i) => `<button type="button" class="${i === 0 ? 'on' : ''}">${svgi(g, 'none', 2.1)}</button>`).join('')}</div></div>`;
 }
@@ -2022,7 +2107,7 @@ function appBookgram() {
       body = `<button type="button" class="reelbtn" data-act="phPickReel" ${canPost(S, 'lectok') ? '' : 'disabled'}>${canPost(S, 'lectok') ? 'Grabar un reel' : 'Ya grabaste uno hoy'}</button>${reels.map(reelHTML).join('') || '<div class="empty-note">Tus reels aparecerán aquí.</div>'}`;
     }
   } else if (PH.tab === 'perfil') {
-    body = `<div class="prof"><div class="big"></div><div class="st"><div><b>${photos.length + reels.length}</b>publicaciones</div><div><b>${fmtK(S.followers)}</b>seguidores</div></div></div>
+    body = `<div class="prof"><div class="big">${heroAvatarImg()}</div><div class="st"><div><b>${photos.length + reels.length}</b>publicaciones</div><div><b>${fmtK(S.followers)}</b>seguidores</div></div></div>
       <p style="padding:0 14px 10px"><b>${esc(S.shopName)}</b><br>Librería cozy · novelas, té y gato.</p><div class="pgrid">${photos.filter((p) => p.shot).map((p) => `<div><img src="${p.shot}" alt=""></div>`).join('')}</div>`;
   } else {
     const posts = [...photos, ...reels].sort((a, b) => b.day - a.day);
@@ -2111,13 +2196,27 @@ function appResenas() {
   return gen('resenas', 'Reseñas', tn ? `${head}<h4 class="bk-h">Tus libros mejor valorados</h4>${items}${quotes}` : '<div class="signup"><p>Aún no hay valoraciones. Cada venta deja una nota en tus libros: según lo bien que acierte la recomendación, subirá o bajará.</p></div>');
 }
 
+const camItemsHTML = () => {
+  const have = sellable(S);
+  const goods = ALL_GOODS_LIST().filter((g) => (S.goods?.[g.id] ?? 0) > 0).map((g) => `<button type="button" class="wi-it ${PH.camKey === 'g:' + g.id ? 'sel' : ''}" data-act="camPick" data-key="g:${g.id}"><span class="wi">${g.emoji}</span><b>${esc(g.name)}</b></button>`).join('');
+  const ids = stkApply(BOOKS.filter((b) => ((have.get(b.id)?.shop ?? 0) + (have.get(b.id)?.store ?? 0)) > 0).map((b) => b.id));
+  const books = ids.map((id) => `<button type="button" class="wi-it ${PH.camKey === 'b:' + id ? 'sel' : ''}" data-act="camPick" data-key="b:${id}">${coverSVG(BOOK[id], 36, 54)}<b>${esc(BOOK[id].title)}</b></button>`).join('');
+  return goods + books || '<p class="empty">No tienes nada que fotografiar todavía.</p>';
+};
+const ALL_GOODS_LIST = () => [...GOODS, ...EREADERS];
+
 function appCamara() {
   const album = S.album ?? [];
   const shop = world.view === 'shop';
-  return gen('camara', 'Cámara', `<div class="cm-view">${album[0]?.shot ? `<img src="${album[0].shot}" alt="">` : '<div class="cm-none">Aún no has hecho fotos</div>'}</div>
-    <div class="cm-bar"><button type="button" class="cm-shutter" data-act="camShot" ${shop ? '' : 'disabled'} aria-label="Hacer foto"></button></div>
-    ${shop ? '' : '<p class="ag-empty">Vuelve a la tienda para hacer una foto.</p>'}
-    ${album.length > 1 ? `<h4 class="bk-h">Álbum</h4><div class="cm-grid">${album.map((p) => `<div><img src="${p.shot}" alt=""><small>Día ${p.day}</small></div>`).join('')}</div>` : ''}`, album.length ? `${album.length} fotos` : '');
+  const mode = PH.cam ?? 'tienda';
+  const what = mode === 'objeto' && PH.camKey ? (PH.camKey.startsWith('b:') ? BOOK[PH.camKey.slice(2)]?.title : GOOD[PH.camKey.slice(2)]?.name) : '';
+  stkRender = () => { const l = $('#camList'); if (l) l.innerHTML = camItemsHTML(); };
+  return gen('camara', 'Cámara', `<div class="cm-modes"><button type="button" class="${mode === 'tienda' ? 'on' : ''}" data-act="camMode" data-m="tienda">La tienda</button><button type="button" class="${mode === 'objeto' ? 'on' : ''}" data-act="camMode" data-m="objeto">Un libro u objeto</button></div>
+    ${mode === 'objeto' ? `<p class="ag-empty">${what ? `Foto de: <b>${esc(what)}</b>` : 'Elige qué quieres fotografiar'}</p>${stkToolsHTML()}<div id="camList" class="wlist cm-list">${camItemsHTML()}</div>` : ''}
+    <div class="cm-view">${album[0]?.shot ? `<img src="${album[0].shot}" alt="">` : '<div class="cm-none">Aún no has hecho fotos</div>'}</div>
+    <div class="cm-bar"><button type="button" class="cm-shutter" data-act="camShot" ${shop || mode === 'objeto' ? '' : 'disabled'} aria-label="Hacer foto"></button></div>
+    ${shop || mode === 'objeto' ? '' : '<p class="ag-empty">Vuelve a la tienda para hacer una foto de la tienda.</p>'}
+    ${album.length > 1 ? `<h4 class="bk-h">Álbum</h4><div class="cm-grid">${album.map((p) => `<div><img src="${p.shot}" alt=""><small>${p.label ? esc(p.label.slice(0, 14)) : `Día ${p.day}`}</small></div>`).join('')}</div>` : ''}`, album.length ? `${album.length} fotos` : '');
 }
 
 const MAP_PLACES = {
@@ -2204,6 +2303,13 @@ const act = {
   decor: () => { closeSheet(); toggleEdit(); },
   editTab: ({ id }) => { editTab = id; renderEditPanel(); },
   rotate: () => { const err = rotateFurniture(S, selUid); if (err) { toast(err); return; } persist(); syncWorld(); renderEditPanel(); },
+  nudge: ({ dx, dy }) => { const err = nudgeFurniture(S, selUid, Number(dx), Number(dy)); if (err) { toast(err); return; } persist(); syncWorld(); world.select(selUid); renderEditPanel(); },
+  discard: async ({ uid }) => {
+    const f = furnById(S, uid);
+    if (!f || !(await askConfirm(`¿Tirar «${FURN[f.type].name}»? No recuperarás el dinero.`, 'Tirar', true))) return;
+    const err = discardFurniture(S, uid); if (err) { toast(err); return; }
+    persist(); renderPanel(); toast('Mueble tirado.');
+  },
   storeSel: () => { const err = storeFurniture(S, selUid); if (err) { toast(err); return; } selUid = null; world.select(null); persist(); syncWorld(); renderEditPanel(); renderTop(); },
   setFloor: ({ id }) => { setDeco(S, 'floor', id); persist(); syncWorld(); renderEditPanel(); },
   setWall: ({ id }) => { setDeco(S, 'wall', id); persist(); syncWorld(); renderEditPanel(); },
@@ -2294,11 +2400,22 @@ const act = {
     persist(); renderTop(); renderPhone();
     toast(m.reply ? `${m.name}: «${m.reply}»` : 'Respondido.');
   },
-  camShot: () => {
-    if (world.view !== 'shop') { toast('Vuelve a la tienda para hacer la foto.'); return; }
-    const shot = world.snapshot(480, 320);
+  camMode: ({ m }) => { PH.cam = m; renderPhone(); },
+  camPick: ({ key }) => { PH.camKey = key; renderPhone(); },
+  camShot: async () => {
+    const mode = PH.cam ?? 'tienda';
+    let shot, label = '';
+    if (mode === 'objeto') {
+      if (!PH.camKey) { toast('Elige primero qué quieres fotografiar.'); return; }
+      try { shot = shootItem(PH.camKey); } catch { toast('No he podido hacer esa foto.'); return; }
+      label = PH.camKey.startsWith('b:') ? BOOK[PH.camKey.slice(2)]?.title : GOOD[PH.camKey.slice(2)]?.name;
+    } else {
+      if (world.view !== 'shop') { toast('Vuelve a la tienda para hacer la foto.'); return; }
+      shot = await world.snapshot(480, 320, true);
+      if (!shot) { toast('No he podido hacer la foto.'); return; }
+    }
     S.album ??= [];
-    S.album.unshift({ shot, day: S.day });
+    S.album.unshift({ shot, day: S.day, label });
     S.album = S.album.slice(0, 8);
     persist();
     $('#phScreen').insertAdjacentHTML('beforeend', '<div class="flash"></div>');
@@ -2332,10 +2449,10 @@ const act = {
     renderPhone();
     renderTop();
   },
-  phPhoto: () => {
+  phPhoto: async () => {
     if (!canPost(S, 'foto')) { toast('Ya has publicado hoy. Vuelve mañana.'); return; }
     if (world.view !== 'shop') { toast('Vuelve a la tienda para hacer la foto.'); return; }
-    const shot = world.snapshot(480, 320);
+    const shot = await world.snapshot(480, 320, true);
     const p = postPhoto(S);
     if (!p) return;
     p.shot = shot;
@@ -2428,9 +2545,11 @@ const act = {
   pcClose: () => { const e = attending; closeSheet(); if (!e) return; e.c.talk.pcChecked = true; dlgOpen(); clientSays(e, pickOne(['¿Qué tal? ¿Hay suerte?', 'Vale… ¿lo tienes?', 'Te espero, sin prisa.']), 'neutra', () => hub(e)); },
   loanTake: ({ i }) => { const err = takeLoan(S, Number(i)); if (err) { toast(err); return; } sfx('coin'); persist(); renderTop(); renderPhone(); toast('Préstamo concedido: el dinero ya está en tu cuenta.'); },
   loanRepay: () => { const err = repayLoan(S); if (err) { toast(err); return; } sfx('coin'); persist(); renderTop(); renderPhone(); toast('Has devuelto el préstamo.'); },
+  viewWindow: ({ uid }) => viewWindowOutside(uid),
   winSlot: ({ uid, i }) => windowPick(uid, Number(i)),
   winPut: ({ uid, i, key }) => { const err = setWindow(S, uid, Number(i), key); if (err) { toast(err); return; } persist(); syncWorld(); windowSheet(uid); },
   winBack: ({ uid }) => windowSheet(uid),
+  gift: ({ id }) => giftRes?.(id),
   upsell: ({ v }) => { const f = upRes; upRes = null; f?.(v === 'y'); },
   buyGood: ({ id, n }) => { const err = buyGood(S, id, Number(n) || 1); if (err) { toast(err); return; } sfx('coin'); persist(); renderTop(); renderPanel(); toast(`${GOOD[id].name} ×${Number(n) || 1} en el almacén.`); },
   edPick: ({ v }) => { closeSheet(); const r = edResolve; edResolve = null; r?.(v === 's'); },

@@ -499,3 +499,17 @@ body.intro #openShopBtn, body.inmenu #openShopBtn, body.editing #openShopBtn { d
 .wlist { max-height: 46vh; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; }
 .wi-it { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; border: 2px solid #38211a; border-radius: 12px; background: #fffaf0; cursor: pointer; text-align: center; }
 .wi-it b { font: 700 11.5px/1.15 var(--serif); } .wi-it small { color: var(--muted); font: 600 10.5px var(--sans); }
+
+.btn.ghost2 { border-color: #b8402f; color: #b8402f; background: transparent; }
+.selbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 4px 0; }
+
+.avp img, .prof .big img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.pl .app-top .avt.avp { background: #fff; overflow: hidden; border: 2px solid #2e6f9e; }
+.prof .big { overflow: hidden; }
+.cm-modes { display: flex; gap: 6px; padding: 8px 10px; background: #000; }
+.cm-modes button { flex: 1; border: 1.5px solid #666; background: #222; color: #ddd; border-radius: 999px; padding: 6px 8px; font: 700 12.5px var(--sans); cursor: pointer; }
+.cm-modes button.on { background: #ffd45c; color: #1a1a1a; border-color: #ffd45c; }
+.cm-list { max-height: 26vh; padding: 0 8px; } .cm-list .wi-it { background: #1d1d1d; border-color: #444; color: #eee; } .cm-list .wi-it.sel { border-color: #ffd45c; }
+.pl.camara .stk-tools { padding: 0 8px; } .pl.camara .stk-tools input, .pl.camara .stk-tools select { background: #1d1d1d; color: #eee; border-color: #444; }
+
+#outBack { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 14px); z-index: 60; box-shadow: 0 4px 14px rgba(0,0,0,.4); }

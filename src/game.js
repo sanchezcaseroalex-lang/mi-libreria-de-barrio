@@ -141,6 +141,22 @@ export function rotateFurniture(s, uidv) {
 }
 
 // Guarda el mueble en el inventario y devuelve sus libros al almacén.
+// Tirar un mueble que no quieres (solo los que están sin colocar)
+export function discardFurniture(s, uidv) {
+  const f = furnById(s, uidv);
+  if (!f || FURN[f.type].fixed) return 'Ese mueble no se puede tirar.';
+  if (f.x != null) return 'Guárdalo primero en el inventario.';
+  s.furniture = s.furniture.filter((x) => x.uid !== uidv);
+  return null;
+}
+
+// Mueve un mueble colocado una casilla (alternativa a arrastrar)
+export function nudgeFurniture(s, uidv, dx, dy) {
+  const f = furnById(s, uidv);
+  if (!f || f.x == null) return 'Colócalo primero.';
+  return placeFurniture(s, uidv, f.x + dx, f.y + dy);
+}
+
 export function storeFurniture(s, uidv) {
   const f = furnById(s, uidv);
   if (!f || FURN[f.type].fixed) return 'Ese mueble no se puede guardar.';
@@ -256,6 +272,7 @@ export function buyExpansion(s, id) {
   const e = EXPANSIONS.find((x) => x.id === id);
   if (!e) return 'Ese local no existe.';
   if (ownsExpansion(s, id)) return 'Ya es tuyo.';
+  if (id === 'oeste2' && !ownsExpansion(s, 'oeste')) return 'Primero necesitas la Sala de lectura.';
   if (s.level < e.level) return `Se desbloquea en el nivel ${e.level}.`;
   if (s.money < e.price) return 'No te llega el dinero.';
   s.money -= e.price;
@@ -448,6 +465,35 @@ export function upsellFor(s) {
   const lacking = unlocked.filter((g) => goodStock(s, g.id) <= 0);
   if (lacking.length && Math.random() < 0.5) { const g = lacking[Math.floor(Math.random() * lacking.length)]; s.missedGoods ??= {}; s.missedGoods[g.id] = (s.missedGoods[g.id] ?? 0) + 1; return { item: g, missing: true }; }
   return null;
+}
+
+/* ---------- Regalos a clientes habituales ---------- */
+
+const hashS = (str) => [...str].reduce((t, ch) => (t * 31 + ch.charCodeAt(0)) >>> 0, 7);
+// qué complementos le gustan a cada personaje (los nuevos lo traen en CAST; el resto se reparte de forma estable)
+export function giftLikes(charId) {
+  const ch = CAST_BY_ID[charId];
+  if (ch?.likes?.length) return ch.likes;
+  const pool = GOODS.map((g) => g.id), h = hashS(charId);
+  return [pool[h % pool.length], pool[(h >> 3) % pool.length], pool[(h >> 6) % pool.length]];
+}
+export const giftStock = (s) => GOODS.filter((g) => (s.goods?.[g.id] ?? 0) > 0);
+export function canGift(s, c) {
+  if (!c?.charId || c.pickup || c.parcel || !CAST_BY_ID[c.charId] || CAST_BY_ID[c.charId].story) return false;
+  if ((s.stats?.visits?.[c.charId] ?? 0) < 3) return false;
+  if ((s.gifted?.[c.charId] ?? -9) > s.day - 3) return false;
+  return giftStock(s).length > 0;
+}
+export function giveGift(s, charId, goodId) {
+  const g = GOOD[goodId];
+  if (!g || (s.goods?.[goodId] ?? 0) <= 0) return null;
+  s.goods[goodId]--;
+  s.gifted ??= {}; s.gifted[charId] = s.day;
+  const liked = giftLikes(charId).includes(goodId);
+  s.rep += liked ? 4 : 1; s.followers += liked ? 3 : 0;
+  addPts(s, liked ? 12 : 4); gainXp(s, liked ? 12 : 4);
+  s.stats ??= { sold: 0, regulars: {} }; s.stats.gifts = (s.stats.gifts ?? 0) + 1;
+  return { liked, good: g };
 }
 
 /* ---------- Compra directa: el cliente coge un libro de la estantería y paga sin hablar ---------- */
@@ -744,7 +790,7 @@ export function offer(s, bookId, opts = {}) {
   s.rep += score;
   s.stats ??= { sold: 0, regulars: {} };
   s.stats.sold++;
-  if (c.charId) s.stats.regulars[c.charId] = true;
+  if (c.charId) { s.stats.regulars[c.charId] = true; s.stats.visits ??= {}; s.stats.visits[c.charId] = (s.stats.visits[c.charId] ?? 0) + 1; }
   gainXp(s, 10 + (score === 3 ? 8 : score === 2 ? 3 : 0));
   const stars = score === 3 ? 5 : score === 2 ? 4 : 3;
   const post = maybeReview(s, book, stars);

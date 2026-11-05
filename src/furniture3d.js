@@ -309,9 +309,30 @@ function ereaderStand(f, ctx) {
   return shade(g);
 }
 
+/* ---------- Paredes y puerta de la zona de lectura ---------- */
+
+function partitionWall() {
+  const g = new THREE.Group();
+  boxAt(g, 1, 2.0, .12, M('#efe3c8', .9), 0, 0, 0, .01);
+  boxAt(g, 1.02, .5, .14, M('#2f5a4a', .9), 0, 0, 0, .01);
+  boxAt(g, 1.04, .06, .16, mWalnut, 0, 2.0, 0, .01);
+  boxAt(g, 1.02, .05, .14, mWalnut, 0, .5, 0, .005);
+  return shade(g);
+}
+function doorway() {
+  const g = new THREE.Group();
+  [-1, 1].forEach((s) => boxAt(g, .14, 2.0, .16, mWalnut, s * .43, 0, 0, .015));
+  boxAt(g, 1, .22, .16, mWalnut, 0, 1.78, 0, .015);
+  boxAt(g, 1.04, .06, .2, mDark, 0, 2.0, 0, .01);
+  const sign = canvasTex(256, 70, (c, w2, h2) => { c.fillStyle = '#3f6b66'; c.fillRect(0, 0, w2, h2); c.strokeStyle = '#f3e7c9'; c.lineWidth = 4; c.strokeRect(5, 5, w2 - 10, h2 - 10); c.fillStyle = '#f3e7c9'; c.font = '700 30px Fraunces, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Zona de lectura', w2 / 2, h2 / 2 + 2); });
+  boxAt(g, .9, .26, .05, mDark, 0, 2.08, 0, .005);
+  [1, -1].forEach((s) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(.86, .24), new THREE.MeshStandardMaterial({ map: sign })); m.position.set(0, 2.2, s * .03); m.rotation.y = s > 0 ? 0 : Math.PI; g.add(m); });
+  return shade(g);
+}
+
 /* ---------- Escaparate y sus artículos ---------- */
 
-function itemMesh(key) {
+export function itemMesh(key) {
   const g = new THREE.Group(), [kind, id] = key.split(':');
   if (kind === 'b') { const bk = displayBook(BOOK[id], .2, .3, .04); bk.rotation.x = -.12; g.add(bk); return g; }
   const colors = ['#d9566b', '#e0a93b', '#3a8a7a'];
@@ -354,7 +375,7 @@ function escaparate(f) {
 
 // Cada constructor devuelve un grupo con origen en el centro de la huella.
 export const BUILD = {
-  shelf, table: roundTable, counter, armchair, sofa, side: sideTable, lamp: floorLamp, plant, cat: catBed, rug, escaparate, ereader: ereaderStand, coffee: coffeeCorner,
+  shelf, table: roundTable, counter, armchair, sofa, side: sideTable, lamp: floorLamp, plant, cat: catBed, rug, escaparate, wall: partitionWall, doorway, ereader: ereaderStand, coffee: coffeeCorner,
 };
 
 export function buildFurniture(f, ctx) {

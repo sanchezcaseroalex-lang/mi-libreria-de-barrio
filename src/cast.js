@@ -15,7 +15,7 @@ const shuffle = (a) => [...a].sort(() => Math.random() - 0.5);
 const refCache = {};
 // Etiquetas que definen cada género: lo que un cliente cuenta de su libro debe ir en esa línea (nada de «reinos en guerra» si pidió romance)
 const GENRE_SIG = {
-  romantasia: ['romance', 'enemigos', 'hadas', 'dragones', 'magia'], epica: ['reinos', 'epica', 'magia', 'aventura', 'politica'],
+  romantasia: ['romance', 'enemigos', 'hadas', 'dragones', 'magia'], epica: ['reinos', 'epica', 'magia', 'aventura', 'politica', 'dragones'],
   thriller: ['crimen', 'psico', 'intriga', 'asesinos'], scifi: ['espacio', 'futuro', 'supervivencia'], terror: ['miedo', 'fantasmas', 'oscuro'],
   negra: ['detectives', 'crimen'], romance: ['romance', 'verano', 'emociones', 'ternura'], historica: ['epoca', 'historia'], literaria: ['reflexion', 'emociones'],
   humor: ['humor'], infantil: ['ternura', 'emociones'], ensayo: ['reflexion', 'habitos', 'superacion'], cocina: ['recetas'], viajes: ['viajes', 'superacion'],
@@ -172,6 +172,66 @@ export const CAST = [
       nope: ['Nooo, ese no.', 'Mmm, ese no tiene dragones.'],
     },
   },
+  {
+    id: 'noa', name: 'Noa', age: 'joven', pref: {romance:3,scifi:2,literaria:2,ensayo:2,romantasia:1.5,epica:1}, likes: ["libreta","marcapaginas"],
+    look: { skin: '#e8b894', hair: '#7a3a5a', eyes: '#4a2a1c', style: 'trenza', lashes: true, outfit: 'hoodie', coat: '#7aa08a', pants: '#2a2a30', acc: 'mochila', scale: 0.98 },
+    voice: { intro: ["Hola, vengo de la facultad.","¡Buenas! Busco algo que no sea un manual.","Hola… ¿tenéis algo para desconectar de los planos?","Holaa, ¿qué tal?"], yes: ["Sí, justo eso.","¡Eso!","Ajá, por ahí."], hmm: ["Mmm, no tanto.","Pues no sé…","No, eso no."], like: ["Me marcó","Me quedé pensando en","Lo leí en el tren:"], thanks: ["¡Genial, para el viaje de mañana!","Perfecto, gracias. Esto me salva la semana.","Me lo llevo, ¡qué buena pinta!"], nope: ["Mmm, no es lo que buscaba.","Ese no me llama, gracias."] },
+  },
+  {
+    id: 'mateo', name: 'Mateo', age: 'adulto', pref: {scifi:5,ensayo:3,humor:2,negra:1,romantasia:0.3,romance:0.3}, likes: ["libreta","fig_mago"],
+    look: { skin: '#c98b5e', hair: '#2a1b14', eyes: '#3a2418', style: 'corto', glasses: true, outfit: 'shirt', shirt: '#3f6b66', coat: '#3f6b66', pants: '#35435a', acc: 'auriculares', scale: 1 },
+    voice: { intro: ["Hola. ¿Tenéis ciencia ficción de la buena?","Buenas, vengo con una duda técnica.","Hola, estoy montando una lista de lecturas.","Hola, ¿qué hay de nuevo?"], yes: ["Exacto.","Eso es, sí.","Correcto."], hmm: ["Hmm, no cuadra.","No exactamente…","Poco probable."], like: ["Me fascinó","He releído tres veces","Me acuerdo de"], thanks: ["Perfecto, lo añado a la lista.","Muy buena elección, gracias.","Me lo llevo. Ya tenía ganas."], nope: ["No, ese no encaja.","Gracias, pero busco otra cosa."] },
+  },
+  {
+    id: 'berta', name: 'Berta', age: 'mayor', pref: {cocina:5,historica:2,romance:2,viajes:1.5,infantil:1,humor:1,terror:0.1,scifi:0.2}, likes: ["vela","fig_gato"],
+    look: { skin: '#f0d0bc', hair: '#dcdce2', style: 'moño', band: '#f2c9a0', glasses: '#d9a0a8', lashes: true, outfit: 'dress', coat: '#d98a98', scarf: '#efe0c8', pants: '#5a4a5a', acc: 'bolso', bag: '#8a5a3a', scale: 0.9 },
+    voice: { intro: ["Hola, majo.","Buenas, vengo a por algo para la cocina.","Ay, qué bonita está la tienda hoy.","Hola, hola. Tengo la masa en reposo, voy rápido."], yes: ["Eso mismo.","Justo eso, sí.","Anda, cómo lo sabes."], hmm: ["Ay, no, eso no.","Mmm, no sé yo…","No me convence."], like: ["Hice todas las recetas de","Me regaló mi nieta","Aún conservo"], thanks: ["Qué ilusión, gracias.","Me lo llevo, ¡esta semana a probar recetas!","Perfecto. Ya os traeré un bizcocho."], nope: ["Ay, no, ese no.","No es lo que buscaba, gracias."] },
+  },
+  {
+    id: 'oscar', name: 'Óscar', age: 'adulto', pref: {infantil:5,humor:3,epica:1.5,scifi:1,viajes:1,cocina:1,terror:0.1,negra:0.2}, likes: ["marcapaginas","fig_dragon"],
+    look: { skin: '#e0a97c', hair: '#4a2f20', eyes: '#4a2a1c', style: 'corto', beard: 'sombra', outfit: 'vest', vest: '#7a5a3a', shirt: '#efe3c8', coat: '#efe3c8', pants: '#3a3a44', acc: 'libro', scale: 1 },
+    voice: { intro: ["¡Buenas! Soy maestro, busco cuentos.","Hola, ¿tenéis algo para leer en clase?","Hola, vengo con una misión: 25 niños.","¡Hola! ¿Qué hay para los peques?"], yes: ["¡Eso!","Sí, sí, eso.","Justo."], hmm: ["Mmm, para mis niños no.","No sé, creo que no.","Demasiado serio."], like: ["A mis alumnos les encantó","Mi clase pidió","Siempre leemos"], thanks: ["¡Genial! A mi clase le va a encantar.","Perfecto, esta semana toca cuentacuentos.","Me lo llevo, ¡gracias!"], nope: ["Mmm, no para mi clase.","No es lo que buscaba."] },
+  },
+  {
+    id: 'aitana', name: 'Aitana', age: 'joven', pref: {romantasia:4,romance:3,humor:1.5,epica:1,literaria:1}, likes: ["marcapaginas","tote"],
+    look: { skin: '#f1c9a5', hair: '#c9863a', eyes: '#5a3a24', style: 'largo', lashes: true, earrings: true, outfit: 'coat', coat: '#e8a0a8', scarf: '#efe0c8', pants: '#2a2a30', acc: 'cámara', scale: 1 },
+    voice: { intro: ["¡Holaaa! Busco algo para mi próximo vídeo.","Hola, ¿cuál es la novela del momento?","¡Buenas! Necesito una portada bonita.","Hola, hola, ¿qué se lleva este mes?"], yes: ["¡Eso, eso!","Súper.","¡Exacto!"], hmm: ["Mmm, no pega con mi tablero.","Uy, no.","No sé, no me da vibras."], like: ["Mi comunidad adora","Lloré con","Hice un vídeo de"], thanks: ["¡Perfecto, va directo al tablero de lecturas!","Me lo llevo, ¡qué portada!","Genial, lo comparto hoy mismo."], nope: ["Uy, no, ese no.","Mmm, ese no pega."] },
+  },
+  {
+    id: 'federico', name: 'Federico', age: 'mayor', pref: {viajes:5,historica:3,ensayo:2,negra:1,literaria:1.5,humor:1,romance:0.4,terror:0.2}, likes: ["libreta","fig_buho"],
+    look: { skin: '#d4a07a', hair: '#e8e8ee', eyes: '#5a3a24', style: 'calvo', beard: 'bigote', glasses: '#8a6a3a', outfit: 'coat', coat: '#8a6a4a', scarf: '#c8a24a', pants: '#4a3a2e', acc: 'bastón', scale: 0.95 },
+    voice: { intro: ["Buenas tardes, joven.","Hola. Vengo de un viaje larguísimo.","Muy buenas. ¿Tiene algo de lugares lejanos?","Hola, hola. A mi edad uno viaja con libros."], yes: ["Así es.","Justamente.","Eso mismo."], hmm: ["Hmm, no lo creo.","No termina de convencerme.","Quizá no."], like: ["Recorrí medio mundo con","Siempre llevo en la maleta","Me acompañó en Kioto"], thanks: ["Excelente. Me lo llevo de viaje.","Una gran compra. Gracias.","Perfecto, ya sé qué leeré en el tren."], nope: ["No, ese no me acompaña.","Gracias, pero busco otra cosa."] },
+  },
+  {
+    id: 'lidia', name: 'Lidia', age: 'adulta', pref: {thriller:3,negra:3,terror:2,scifi:1.5,ensayo:1.5,humor:1.5,romance:0.5,infantil:0.2}, likes: ["vela","libreta"],
+    look: { skin: '#d9a07a', hair: '#1a1410', eyes: '#3a2418', style: 'bob', lashes: true, outfit: 'trench', coat: '#4a6a7a', scarf: '#efe0c8', pants: '#2a2a30', acc: 'cafe', scale: 1 },
+    voice: { intro: ["Hola. Salgo de guardia, necesito evadirme.","Buenas… dame algo que me quite el sueño. O que me lo dé.","Hola, ¿tienes algo adictivo?","Hola. Café en mano, cerebro en pausa."], yes: ["Sí, eso.","Ajá.","Eso me vale."], hmm: ["No, hoy no.","Mmm, demasiado.","No me apetece."], like: ["Me tuvo despierta","Lo leí en un turno de noche:","Me acuerdo de"], thanks: ["Perfecto, para la guardia de mañana.","Gracias, me lo llevo.","Lo leo esta noche, seguro."], nope: ["No, ese no.","Hoy no me apetece eso."] },
+  },
+  {
+    id: 'ibai', name: 'Ibai', age: 'adolescente', pref: {terror:3,scifi:3,epica:3,humor:3,infantil:0.3,romance:0.4,ensayo:0.3,cocina:0.2}, likes: ["fig_dragon","marcapaginas"],
+    look: { skin: '#f2c9ae', hair: '#2a3a5a', eyes: '#3a2a20', style: 'rizado', outfit: 'hoodie', coat: '#2f3a5a', pants: '#2a2a30', acc: 'auriculares', scale: 1 },
+    voice: { intro: ["Ey… ¿tenéis algo que dé miedo?","Hola, mi hermano dice que lea más.","Buenas, busco algo épico, tipo videojuego.","Eh, hola. ¿Algo con acción?"], yes: ["Sí, eso.","Vale, eso mola.","Tal cual."], hmm: ["Meh, no.","Paso.","No sé, aburrido."], like: ["Me flipó","Lo jugué y luego lo leí:","Mi amigo me dejó"], thanks: ["Vale, mola. Me lo llevo.","Guay, gracias.","Esto lo flipo, seguro."], nope: ["Meh, ese no.","Nah, otro."] },
+  },
+  {
+    id: 'sara', name: 'Sara', age: 'adulta', pref: {infantil:3,romance:2,cocina:2,ensayo:2,humor:2,literaria:1,terror:0.2}, likes: ["tote","vela"],
+    look: { skin: '#e0a97c', hair: '#5a3a22', eyes: '#4a2a1c', style: 'largo', lashes: true, outfit: 'coat', coat: '#5b8a8f', scarf: '#efe0c8', pants: '#35435a', acc: 'tote', bag: '#c8693f', scale: 1 },
+    voice: { intro: ["Hola, perdona, voy con prisa y con peques.","Buenas, necesito un regalo de cumpleaños.","Hola, tengo diez minutos antes del cole.","Hola, ¿me ayudas? Estoy desbordada."], yes: ["Sí, eso.","Eso mismo.","Perfecto."], hmm: ["Uf, no sé.","No, eso no.","Mmm, creo que no."], like: ["A mis hijos les encantó","Lo leímos juntos:","Me recomendaron"], thanks: ["¡Me salvas la tarde, gracias!","Perfecto, ya tengo regalo.","Me lo llevo, ¡mil gracias!"], nope: ["Mmm, no creo.","No es lo que buscaba."] },
+  },
+  {
+    id: 'tomas', name: 'Tomás', age: 'mayor', pref: {historica:5,ensayo:3,literaria:2.5,negra:2,viajes:1.5,romance:0.4,scifi:0.6,terror:0.2}, likes: ["libreta","fig_buho"],
+    look: { skin: '#d9a37c', hair: '#c8c8cf', eyes: '#4a3418', style: 'canoso', beard: 'barba', glasses: '#8a6a3a', outfit: 'vest', vest: '#4a5a6a', shirt: '#efe3c8', coat: '#efe3c8', pants: '#4a4a52', acc: 'libro', scale: 1 },
+    voice: { intro: ["Buenas. ¿Tienen algo bien documentado?","Hola, vengo por la parte histórica.","Buenos días. Me interesa el pasado.","Muy buenas, ¿qué novedades hay en historia?"], yes: ["Exactamente.","Así es.","Correcto."], hmm: ["Hmm, poco riguroso.","No me parece.","Dudo."], like: ["Estudié","Subrayé cada página de","Me costó soltar"], thanks: ["Excelente, me lo llevo.","Muy buena elección. Gracias.","Perfecto, esta tarde lo empiezo."], nope: ["No, ese no.","Poco me aporta."] },
+  },
+  {
+    id: 'valeria', name: 'Valeria', age: 'adulta', pref: {literaria:5,romance:2,ensayo:2,romantasia:1.5,historica:1.5,humor:1,terror:0.4}, likes: ["libreta","marcapaginas"],
+    look: { skin: '#f0d0ba', hair: '#14110f', eyes: '#3a2a20', style: 'bob', lashes: true, earrings: true, outfit: 'coat', coat: '#6a4a5a', scarf: '#e8cf9a', pants: '#2a2a30', acc: 'libro', scale: 0.98 },
+    voice: { intro: ["Buenas tardes. Busco algo que se deje subrayar.","Hola, ¿tenéis prosa cuidada?","Hola… vengo a perderme entre las estanterías.","Buenas, escribo y necesito inspiración."], yes: ["Eso es.","Precisamente.","Sí, esa es la idea."], hmm: ["Hmm, no es la voz que busco.","Quizá no.","No acaba de convencerme."], like: ["Me dejó huella","Todavía recito de memoria","Releí"], thanks: ["Qué elegancia, gracias.","Me lo llevo, lo subrayaré entero.","Perfecto, gracias por la recomendación."], nope: ["No es lo que busco.","Hmm, no."] },
+  },
+  {
+    id: 'adrian', name: 'Adrián', age: 'mayor', pref: {negra:5,thriller:3,historica:1.5,humor:1,ensayo:1,romance:0.3,infantil:0.1}, likes: ["vela","libreta"],
+    look: { skin: '#d29a6c', hair: '#8a8a8a', eyes: '#3a2a1c', style: 'canoso', beard: 'sombra', outfit: 'trench', coat: '#6a5a46', scarf: '#3a3a44', pants: '#2f3548', acc: 'cafe', scale: 1.02 },
+    voice: { intro: ["Buenas. Vengo de la comisaría, bueno, de jubilado.","Hola. Algo de novela negra, por favor.","Buenos días. Dígame que hay un buen asesino.","Hola, hijo. Busco misterio del de verdad."], yes: ["Eso mismo.","Bien visto.","Así es."], hmm: ["Eso ya lo adiviné.","No, no cuela.","Poco creíble."], like: ["Resolví el caso de","Adiviné al culpable de","Me engañó"], thanks: ["Muy bien, a ver si me engaña.","Gracias, esta noche cae.","Perfecto. Lo termino antes del jueves."], nope: ["Eso ya lo vi venir.","No, ese no."] },
+  },
 ];
 /* ---------- Samir, el repartidor: aparece cuando llegan los pedidos ---------- */
 
@@ -233,9 +293,15 @@ const PREF_NEW = {
   sofia: { literaria: 4, historica: 2, romance: 2, ensayo: 2, terror: 1.5, viajes: 1.5, humor: 0.6 },
   pilar: { negra: 3, historica: 2.5, cocina: 2.5, viajes: 1, romance: 1, humor: 1, terror: 0.3, scifi: 0.2 },
   elena: { romance: 3, viajes: 3, cocina: 2, literaria: 2, ensayo: 2, humor: 1.2, historica: 1.5 },
-  teo: { infantil: 6, humor: 1.5, scifi: 1, terror: 0, negra: 0, romance: 0, historica: 0.1, ensayo: 0, cocina: 0.2, viajes: 0.2, literaria: 0 },
+  teo: { infantil: 6, humor: 1.5, scifi: 1, terror: 0, negra: 0, romance: 0, historica: 0, ensayo: 0, cocina: 0, viajes: 0, literaria: 0, thriller: 0, romantasia: 0 },
 };
 CAST.forEach((c) => { Object.assign(c.pref, PREF_NEW[c.id] ?? {}); });
+CAST.find((c) => c.id === 'teo').likeTag = 'dragones';   // lleva un peluche de dragón: sus libros tienen dragones
+
+export const HERO_GENDER = { v: 'f' };
+export const setHeroGender = (g) => { HERO_GENDER.v = g === 'm' ? 'm' : 'f'; };
+// «gracias, hija» / «guapa» → «hijo» / «guapo» si tu protagonista es un chico
+export const genderize = (t) => (HERO_GENDER.v === 'm' ? String(t).replace(/(?<!\bmi )\bhija\b/g, 'hijo').replace(/\bguapa\b/g, 'guapo') : t);
 
 export const CAST_BY_ID = Object.fromEntries(CAST.map((c) => [c.id, c]));
 export const CAST_LOOKS = CAST.map((c) => c.look);
@@ -341,7 +407,8 @@ const GENRE_ASKS = {
 
 export function openingLine(c) {
   const v = voiceOf(c), b = BOOK[c.target];
-  const intro = pick(v.intro);
+  let intro = pick(v.intro);
+  if (/dragon/i.test(intro) && !b.tags.includes('dragones')) intro = pick(v.intro.filter((x) => !/dragon/i.test(x)));   // solo habla de dragones si el libro los tiene
   const gen = GENRES[b.genre].label.toLowerCase();
   if (c.type === 'unknownTitle') return `${intro} ${pick([`¿Tenéis «${c.unknown}»?`, `Vengo buscando «${c.unknown}».`, `Me lo recomendó una amiga: «${c.unknown}». ¿Lo tenéis?`, `¿Os queda «${c.unknown}»?`])}`.trim();
   if (c.type === 'unknownGenre') return `${intro} ${pick([`Busco algo de ${c.unknown}.`, `¿Tenéis libros de ${c.unknown}?`, `¿Tenéis una sección de ${c.unknown}?`])}`.trim();
@@ -397,7 +464,7 @@ export function playerOptions(c, ctx = {}) {
     }
     const b0 = BOOK[c.target], out = [];
     if (b0.saga && b0.saga.n > 1 && !c.sequel && !c.pickup && !c.returnFor && !c.talk.asked.includes('prev')) out.push({ id: 'prev', text: '¿Te has leído el anterior de la saga?' });
-    if (ctx.pc && !c.talk.pcChecked && !c.pickup) out.push({ id: 'pc', text: 'Espérate, que lo miro en el ordenador.' });
+    if (ctx.pc && !c.talk.pcChecked) out.push({ id: 'pc', text: 'Espérate, que lo miro en el ordenador.' });
     if (c.talk.prevAsked && c.unaware && !c.returnFor && b0.saga && checked) {
       const first = firstOfSaga(b0), sg = BOOKS.filter((x) => x.saga?.id === b0.saga.id && x.saga.n <= b0.saga.n);
       if (!ctx.have || ctx.have(first.id)) out.push({ id: 'givefirst', text: `Empieza por el primero, «${first.title}», y cuando lo leas vuelves a por este.` });
@@ -423,6 +490,7 @@ export function playerOptions(c, ctx = {}) {
   }
   const asked = c.talk.asked.filter((x) => x !== 'alt').length;
   const out = asked >= limit ? [] : c.talk.menu.filter((o) => !c.talk.asked.includes(o.id)).slice(0, 3);
+  if (ctx.pc && !c.talk.pcChecked) out.push({ id: 'pc', text: 'Espérate, que lo miro en el ordenador.' });
   if (asked >= 1 || c.type === 'tags') out.push({ id: 'go', text: 'Creo que ya sé qué te vendría bien. Voy a buscarlo.' });
   return out;
 }
@@ -545,7 +613,9 @@ export function pickChar(bag) {
 export const bookWeights = (char, avail, trendIds) => {
   const out = [];
   for (const b of avail) {
-    const w = (char.pref[b.genre] ?? 1) * (trendIds.has(b.id) ? 3 : 1);
+    let w = (char.pref[b.genre] ?? 1) * (trendIds.has(b.id) ? 3 : 1);
+    if (w <= 0) continue;
+    if (char.likeTag) w *= b.tags.includes(char.likeTag) ? 6 : 0.25;
     for (let i = 0; i < Math.max(1, Math.round(w * 2)); i++) out.push(b);
   }
   return out;
@@ -556,13 +626,13 @@ void BOOKS;
 
 const apr = (o) => ({ outfit: 'apron', acc: 'nada', ...o });
 export const HERO_BASES = [
-  { id: 'protagonista1', name: 'Ana', label: 'Joven · pelo largo', look: apr({ skin: '#f1c09c', hair: '#6a3a24', style: 'largo', apron: '#f3e7c9', coat: '#4d8f86', shirt: '#4d8f86', pants: '#35435a', lashes: true, earrings: true, eyes: '#4a2a1c' }) },
-  { id: 'protagonista2', name: 'Mara', label: 'Joven · pelirroja con gafas', look: apr({ skin: '#f6d9c0', hair: '#b8442e', style: 'bob', glasses: true, freckles: true, apron: '#e0a93b', coat: '#7aa08a', shirt: '#7aa08a', pants: '#4a3a2e', lashes: true }) },
-  { id: 'protagonista3', name: 'Nia', label: 'Joven · rizos', look: apr({ skin: '#7a4a2c', hair: '#16110e', style: 'rizado', earrings: true, apron: '#dbe8f0', coat: '#3f6b8a', shirt: '#3f6b8a', pants: '#2a2a30', lashes: true }) },
-  { id: 'protagonista4', name: 'Pilar', label: 'Mayor · moño canoso', look: apr({ skin: '#f0d6c4', hair: '#d8d8dc', style: 'moño', glasses: '#e8a0b8', band: '#d9c7e8', apron: '#efe3f4', coat: '#a28ac8', shirt: '#a28ac8', pants: '#4a3a5a', lashes: true, scale: 0.94 }) },
-  { id: 'protagonista5', name: 'Álex', label: 'Joven · barba corta', look: apr({ skin: '#e0a97c', hair: '#4a2f20', style: 'corto', beard: 'sombra', apron: '#d9b88a', coat: '#8a5a3a', shirt: '#8a5a3a', pants: '#2f3548' }) },
-  { id: 'protagonista6', name: 'Leo', label: 'Joven · rubio con gafas', look: apr({ skin: '#f2cfb2', hair: '#d8a657', style: 'corto', glasses: '#2b2b2b', apron: '#f3e7c9', coat: '#6a8a4f', shirt: '#6a8a4f', pants: '#35435a' }) },
-  { id: 'protagonista7', name: 'Ernesto', label: 'Mayor · calvo con barba', look: apr({ skin: '#d4a07a', hair: '#f0f0f2', style: 'calvo', beard: 'barba', apron: '#f3e7c9', coat: '#3f6b4f', shirt: '#3f6b4f', pants: '#5a4a3a', scale: 0.96 }) },
-  { id: 'protagonista8', name: 'Kofi', label: 'Joven · rizos cortos', look: apr({ skin: '#6a4228', hair: '#16110e', style: 'rizado', apron: '#e8e0d0', coat: '#2f3a5a', shirt: '#2f3a5a', pants: '#3a3a44' }) },
+  { id: 'protagonista1', gender: 'f', name: 'Ana', label: 'Joven · pelo largo', look: apr({ skin: '#f1c09c', hair: '#6a3a24', style: 'largo', apron: '#f3e7c9', coat: '#4d8f86', shirt: '#4d8f86', pants: '#35435a', lashes: true, earrings: true, eyes: '#4a2a1c' }) },
+  { id: 'protagonista2', gender: 'f', name: 'Mara', label: 'Joven · pelirroja con gafas', look: apr({ skin: '#f6d9c0', hair: '#b8442e', style: 'bob', glasses: true, freckles: true, apron: '#e0a93b', coat: '#7aa08a', shirt: '#7aa08a', pants: '#4a3a2e', lashes: true }) },
+  { id: 'protagonista3', gender: 'f', name: 'Nia', label: 'Joven · rizos', look: apr({ skin: '#7a4a2c', hair: '#16110e', style: 'rizado', earrings: true, apron: '#dbe8f0', coat: '#3f6b8a', shirt: '#3f6b8a', pants: '#2a2a30', lashes: true }) },
+  { id: 'protagonista4', gender: 'f', name: 'Pilar', label: 'Mayor · moño canoso', look: apr({ skin: '#f0d6c4', hair: '#d8d8dc', style: 'moño', glasses: '#e8a0b8', band: '#d9c7e8', apron: '#efe3f4', coat: '#a28ac8', shirt: '#a28ac8', pants: '#4a3a5a', lashes: true, scale: 0.94 }) },
+  { id: 'protagonista5', gender: 'm', name: 'Álex', label: 'Joven · barba corta', look: apr({ skin: '#e0a97c', hair: '#4a2f20', style: 'corto', beard: 'sombra', apron: '#d9b88a', coat: '#8a5a3a', shirt: '#8a5a3a', pants: '#2f3548' }) },
+  { id: 'protagonista6', gender: 'm', name: 'Leo', label: 'Joven · rubio con gafas', look: apr({ skin: '#f2cfb2', hair: '#d8a657', style: 'corto', glasses: '#2b2b2b', apron: '#f3e7c9', coat: '#6a8a4f', shirt: '#6a8a4f', pants: '#35435a' }) },
+  { id: 'protagonista7', gender: 'm', name: 'Ernesto', label: 'Mayor · calvo con barba', look: apr({ skin: '#d4a07a', hair: '#f0f0f2', style: 'calvo', beard: 'barba', apron: '#f3e7c9', coat: '#3f6b4f', shirt: '#3f6b4f', pants: '#5a4a3a', scale: 0.96 }) },
+  { id: 'protagonista8', gender: 'm', name: 'Kofi', label: 'Joven · rizos cortos', look: apr({ skin: '#6a4228', hair: '#16110e', style: 'rizado', apron: '#e8e0d0', coat: '#2f3a5a', shirt: '#2f3a5a', pants: '#3a3a44' }) },
 ];
 export const HERO_BY_ID = Object.fromEntries(HERO_BASES.map((h) => [h.id, h]));

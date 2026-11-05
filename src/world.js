@@ -3,7 +3,7 @@ import {
   THREE, M, MT, MG, mWalnut, mOak, mPine, mDark, mBrass, mPage, canvasTex, floorTex, wallTex, FLOORS, WALLS,
   box, boxAt, cyl, cylAt, sph, shade, disposeTree, hashStr, mulberry32, displayBook, lyingBook, coverTexture, spineBook,
 } from './kit3d.js';
-import { buildFurniture } from './furniture3d.js';
+import { buildFurniture, itemMesh } from './furniture3d.js';
 import { buildTown } from './town3d.js';
 import { makeVan } from './van3d.js';
 import { makePerson, animatePerson, sitPerson, HERO_LOOK } from './people3d.js';
@@ -400,6 +400,23 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       tk.age = (tk.age ?? 0) + dt;
       if (tk.age > 70) { const last = tk.pts[tk.pts.length - 1]; p.position.x = last.x; p.position.z = last.y; tasks.splice(k, 1); tk.res(); continue; }   // seguro: nadie camina eternamente
       const dx = tg.x - p.position.x, dz = tg.y - p.position.z, dist = Math.hypot(dx, dz), step = tk.speed * dt;
+      // si alguien está justo delante, se rodea o se espera un momento (no se traspasan)
+      if (dist > .05) {
+        let blocker = null;
+        for (const q of people) {
+          if (q === p || !q.visible || q.parent !== p.parent) continue;
+          const ox = q.position.x - p.position.x, oz = q.position.z - p.position.z, od = Math.hypot(ox, oz);
+          if (od < .5 && (ox * dx + oz * dz) / (od * dist || 1) > .35) { blocker = q; break; }
+        }
+        if (blocker && (tk.wait ?? 0) < 1.1) {
+          tk.wait = (tk.wait ?? 0) + dt;
+          const side = (p.id % 2 ? 1 : -1);
+          p.position.x += (-dz / dist) * side * step * .6; p.position.z += (dx / dist) * side * step * .6;
+          moving.add(p);
+          continue;
+        }
+        if (!blocker) tk.wait = Math.max(0, (tk.wait ?? 0) - dt * 2);
+      }
       if (dist <= step) { p.position.x = tg.x; p.position.z = tg.y; tk.i++; if (tk.i >= tk.pts.length) { tasks.splice(k, 1); tk.res(); continue; } }
       else { p.position.x += dx / dist * step; p.position.z += dz / dist * step; p.userData.faceT = Math.atan2(dx, dz); }
       moving.add(p);
@@ -501,6 +518,24 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
     const lb = new THREE.Mesh(new THREE.PlaneGeometry(.32, .2), new THREE.MeshStandardMaterial({ map: nameSign(label, '#f3e7c9', '#4a2f24'), roughness: .9 })); lb.position.set(0, .3, .335); g.add(lb);
     return g;
   }
+  // caja ya abierta, con algún libro asomando (decoración del almacén)
+  function openCardboard(small = false) {
+    const g = new THREE.Group(); const m = M('#c9a06a', .95), d = M('#a9814f', .95), dk = M('#5a3f26', .95);
+    boxAt(g, .9, .55, .66, m, 0, 0, 0, .02);
+    boxAt(g, .78, .01, .54, dk, 0, .545, 0, 0);
+    [[0, -.36, -1], [0, .36, 1]].forEach(([x, z, s]) => { const f = box(.9, .02, .32, d, .005); f.position.set(x, .62, z + s * .1); f.rotation.x = s * .9; g.add(f); });
+    [[-.47, -1], [.47, 1]].forEach(([x, s]) => { const f = box(.02, .32, .62, d, .005); f.position.set(x + s * .1, .62, 0); f.rotation.z = -s * .9; g.add(f); });
+    [['alas', -.2], ['antes', .02], ['sal', .22]].forEach(([id, x], k) => { const b = displayBook(BOOK[id], .2, .32, .045); b.position.set(x, .54, .05); b.rotation.set(-.15 + k * .05, .3 - k * .25, 0); g.add(b); });
+    if (small) g.scale.setScalar(.78);
+    return g;
+  }
+  function storeDecor() {
+    const place = (g, x, y, z, ry) => { g.position.set(x, y, z); g.rotation.y = ry; stockRoot.add(g); };
+    place(cardboard('Libros'), .7, 0, 5.35, .08);
+    place(cardboard('Frágil'), .72, .56, 5.33, -.12);
+    place(openCardboard(), 1.6, 0, 5.4, -.1);
+    place(openCardboard(true), .75, 0, 4.45, .35);
+  }
   function syncStore() {
     if (!storeBuilt) buildStoreShell();
     if (stockRoot) { storeRoot.remove(stockRoot); disposeTree(stockRoot); }
@@ -514,6 +549,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       const n = Math.min(S.storage[id], 6);
       for (let k = 0; k < n; k++) { const o = lyingBook(BOOK[id], .24, .34, .045); o.position.set(x, y + k * .046, z + .02); o.rotation.y = Math.PI + (k % 2 ? .08 : -.05); stockRoot.add(o); }
     });
+    storeDecor();   // cajas de adorno apiladas, unas cerradas y otras abiertas
     S.boxes.slice(0, BOX_SLOTS.length).forEach((b, i) => {
       const [x, z] = BOX_SLOTS[i]; const g = cardboard(`${b.items.reduce((a, it) => a + it.qty, 0)} libros`);
       g.position.set(x, 0, z); g.rotation.y = (i % 2 ? .12 : -.1); g.userData.boxId = b.id;
@@ -645,6 +681,8 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
     else { boxRoot && targets.push(boxRoot); storeShelves.forEach((g) => targets.push(g)); walls.forEach((w) => targets.push(w.fixed)); }
     people.forEach((p) => { if (p !== hero && p.visible && p.parent) targets.push(p); });
     const hits = ray.intersectObjects(targets, true);
+    const fh = hits.find((h) => h.object.userData.furnUid);
+    if (fh && (hits[0] === fh || fh.distance < hits[0].distance + 1.2)) return { kind: 'furn', uid: fh.object.userData.furnUid };
     for (const h of hits) {
       if (h.object.userData.furnUid) return { kind: 'furn', uid: h.object.userData.furnUid };
       if (h.object.userData.posterUid) return { kind: 'poster', uid: h.object.userData.posterUid };
@@ -796,6 +834,28 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
         go();
       });
     },
+    // artículos del escaparate vistos desde la calle (keys: ['b:alas', 'g:vela', null, …], 12 huecos: 3 baldas × 4)
+    setTownDisplay(slots = []) {
+      if (!townInfo?.shop) return;
+      const d = townInfo.shop.userData.display;
+      while (d.children.length) { const c = d.children.pop(); disposeTree(c); }
+      const front = 6 / 2 + .02, cx = -2.3, ys = [1.075, 1.525, 1.975];
+      slots.forEach((key, i) => {
+        if (!key) return;
+        const m = itemMesh(key), tier = Math.floor(i / 4), col = i % 4;
+        m.scale.multiplyScalar(key.startsWith('b:') ? 1.5 : 2.4);
+        m.position.set(cx - .72 + col * .48, ys[tier], front + .26);
+        d.add(m);
+      });
+    },
+    // cámara frente al escaparate (vista desde la calle)
+    focusFacade() {
+      if (!townInfo) return;
+      const sx = TOWN_X + 2.2 - 1.4, sz = -4 - 3 - 1.2 + 3;
+      if (townInfo.shop.userData.awning) townInfo.shop.userData.awning.visible = false;   // el toldo taparía la balda de arriba
+      rig.center.set(sx, 0, sz); rig.target.set(sx, 1.55, sz); rig.az = rig.azT = .5; rig.zoom = 2.3; rig.shift = rig.shiftT = 0;
+      fit();
+    },
     setTownName(n) { if (n && n !== townName) { townName = n; if (townRoot) { scene.remove(townRoot); townRoot = null; townInfo = null; } } },
     stopPedestrians() { while (townPeds.length) removePerson(townPeds.pop()); },
     setDoorsOpen(open) { doorTarget = open ? 1.45 : 0; },
@@ -805,6 +865,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       if (v === 'town') {
         if (!townRoot) { const town = buildTown(townName); townInfo = town; townRoot = town.group; townRoot.position.set(TOWN_X, 0, 0); scene.add(townRoot); }
         townRoot.visible = true; shopRoot.visible = false; storeRoot.visible = false;
+        if (townInfo?.shop?.userData?.awning) townInfo.shop.userData.awning.visible = true;
         walls.length = 0;
         rig.center.set(TOWN_X, 0, 0); rig.target.set(TOWN_X, .9, 0); rig.base = 1; rig.zoom = .45; rig.ext = 60;
         sun.target.position.set(TOWN_X, 0, 0); sun.position.set(TOWN_X + 14, 26, -22);
@@ -840,19 +901,25 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       if (id) { const b = displayBook(BOOK[id], .3, .42, .055); b.rotation.x = -1.0; b.position.set(0, .02, .06); hold.add(b); }
     },
     heroPlace(cell, rot = 0) { hero.position.set(cell[0] + .5, 0, cell[1] + .5); hero.rotation.y = rot; hero.userData.faceT = null; },
-    snapshot(w = 480, h = 320) {
-      renderer.render(scene, camera);
-      const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.fillStyle = '#34261f'; g.fillRect(0, 0, w, h);
-      const sw = canvas.width, sh = canvas.height, ar = w / h; let cw = sw, ch = sw / ar; if (ch > sh) { ch = sh; cw = sh * ar; }
-      g.drawImage(canvas, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, w, h);
-      return c.toDataURL('image/jpeg', .72);
-    },
+    snapshot(w = 480, h = 320, day = true) { return new Promise((res) => { shotReq = { w, h, day, res }; setTimeout(() => { if (shotReq && shotReq.res === res) { shotReq = null; res(null); } }, 2500); }); },
     fit,
     pick,
     debug: () => ({ st: st && { moved: st.moved, mode: st.mode, anchor: !!st.anchor }, pinch: !!pinch, pointers: pointers.size, drag: drag?.kind }),
   };
 
   /* ---------- Bucle ---------- */
+  let shotReq = null;
+  function takeShot(q) {
+    const { w, h, day } = q, prevT = timeState, prevN = nightForce;
+    if (day) { nightForce = 0; timeState = { ...timeState, t: .4 }; applyTime(); }
+    renderer.render(scene, camera);
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.fillStyle = '#34261f'; g.fillRect(0, 0, w, h);
+    const sw = canvas.width, sh = canvas.height, ar = w / h; let cw = sw, ch = sw / ar; if (ch > sh) { ch = sh; cw = sh * ar; }
+    cw *= .78; ch *= .78;   // un poco más cerca, para que la tienda llene la foto
+    g.drawImage(canvas, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, w, h);
+    if (day) { nightForce = prevN; timeState = prevT; applyTime(); }
+    return c.toDataURL('image/jpeg', .78);
+  }
   const clock = new THREE.Clock();
   function frame() {
     const dt = Math.min(clock.getDelta(), .05 * (window.__dtCap ?? 1)), t = clock.elapsedTime;
@@ -877,6 +944,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
     stepPeople(dt, t);
     placeCamera();
     updateBubbles();
+    if (shotReq) { const q = shotReq; shotReq = null; let url = null; try { url = takeShot(q); } catch { /* sin foto */ } q.res(url); }
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }

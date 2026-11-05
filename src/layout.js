@@ -14,6 +14,7 @@ export const B = { x0: 0, y0: 0, x1: COLS - 1, y1: ROWS - 1 };
 export const EXPANSIONS = [
   { id: 'este', name: 'Local de al lado', desc: 'Tiras la pared y ganas 5 columnas hacia la derecha.', level: 4, price: 700, add: { x1: 5 } },
   { id: 'fondo', name: 'Trastienda ampliada', desc: 'Abres el fondo: 4 filas más hacia la pared del fondo.', level: 7, price: 1400, add: { y0: -4 } },
+  { id: 'oeste2', name: 'Gran zona de lectura', desc: 'Otras 4 columnas más a la izquierda: sitio de sobra para firmas y clubes de lectura.', level: 10, price: 3200, add: { x0: -4 } },
   { id: 'oeste', name: 'Sala de lectura', desc: 'Una sala nueva a la izquierda: 4 columnas más.', level: 9, price: 2200, add: { x0: -4 } },
 ];
 export function setBounds(owned = []) {
@@ -46,10 +47,12 @@ export const FURN = {
   side: { name: 'Mesita', w: 1, h: 1, norot: true, price: () => 45, level: lv([4, 5, 6]), max: 3, cozy: 0.5, desc: 'Con su taza de té.' },
   sofa: { name: 'Sofá de lectura', w: 2, h: 1, price: (n) => 260 + 60 * n, level: lv([6, 8]), max: 2, cozy: 2, desc: 'Dos clientes pueden leer a la vez.' },
   escaparate: { name: 'Escaparate', w: 3, h: 1, price: () => 280, level: lv([4]), max: 1, cozy: 1.5, desc: 'Coloca a tu gusto libros, complementos y figuritas: 12 huecos libres. Atrae más clientes.' },
+  wall: { name: 'Pared divisoria', w: 1, h: 1, price: () => 45, level: lv([5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]), max: 16, cozy: 0, desc: 'Un tramo de pared para separar la zona de lectura. Se gira para ir en una dirección u otra.' },
+  doorway: { name: 'Puerta de zona', w: 1, h: 1, walk: true, price: (n) => 120 + 40 * n, level: lv([5, 6]), max: 2, cozy: 0.5, desc: 'Un hueco con marco y un cartel de «Zona de lectura» para pasar de una zona a otra.' },
   ereader: { name: 'Expositor de e-readers', w: 1, h: 1, price: () => 220, level: lv([7]), max: 1, cozy: 0.5, desc: 'Con 4 lectores electrónicos de varias marcas: se venden caros y dan mucho margen.' },
-  coffee: { name: 'Rincón de café', w: 1, h: 1, norot: true, price: () => 350, level: lv([9]), max: 1, cozy: 3, desc: 'Más propinas y más calidez.' },
+  coffee: { name: 'Rincón de café', w: 1, h: 1, price: () => 350, level: lv([9]), max: 1, cozy: 3, desc: 'Más propinas y más calidez.' },
 };
-export const FURN_ORDER = ['shelf', 'table', 'plant', 'cat', 'rug', 'armchair', 'lamp', 'side', 'sofa', 'escaparate', 'ereader', 'coffee'];
+export const FURN_ORDER = ['shelf', 'table', 'plant', 'cat', 'rug', 'armchair', 'lamp', 'side', 'sofa', 'escaparate', 'ereader', 'wall', 'doorway', 'coffee'];
 
 // Tamaño en casillas según el giro
 export const dims = (type, rot = 0) => {
@@ -70,7 +73,7 @@ export const placed = (list) => list.filter((f) => f.x != null);
 export function blockedSet(list, ignoreUid = null) {
   const set = new Set();
   for (const f of placed(list)) {
-    if (f.uid === ignoreUid || FURN[f.type].floor) continue;
+    if (f.uid === ignoreUid || FURN[f.type].floor || FURN[f.type].walk) continue;
     for (const [c, r] of cellsOf(f)) set.add(`${c},${r}`);
   }
   return set;
