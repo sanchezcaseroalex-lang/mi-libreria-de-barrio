@@ -23,7 +23,7 @@ import { showBook3D } from './viewer.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '2026-11-05 · 40 libros, gato nuevo';
+const BUILD = '2026-11-05 · precios y repartidor';
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -769,8 +769,7 @@ async function maybeDelivery() {
   });
   closeDialog();
   if (parcels.length) { const total = parcels.reduce((t, o) => t + deliverOrder(S, o), 0); persist(); renderTop(); toast(`Rodeos Express se lleva ${parcels.length === 1 ? 'el paquete' : 'los paquetes'}: +${total} €`); }
-  await exitShop(e);
-  await vanScene('leave');
+  await exitShop(e);   // el repartidor sale por la puerta y se acabó: sin escena de la furgoneta yéndose
   samirIn = false; busy = false;
   renderPanel();
 }

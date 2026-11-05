@@ -107,7 +107,7 @@ export const BOOKS = [
 ];
 
 export const BOOK = Object.fromEntries(BOOKS.map((b) => [b.id, b]));
-export const wholesale = (b) => Math.round(b.price * 0.6);
+export const wholesale = (b) => Math.round(b.price * 0.45);   // lo que pagas al comprarlo (antes 60 % del precio de venta)
 
 // Sagas (para el minijuego de ordenar estantes): cada libro sabe a qué saga pertenece y qué tomo es
 export const SAGAS = [
