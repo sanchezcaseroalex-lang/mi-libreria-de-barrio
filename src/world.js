@@ -401,15 +401,16 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       if (tk.age > 70) { const last = tk.pts[tk.pts.length - 1]; p.position.x = last.x; p.position.z = last.y; tasks.splice(k, 1); tk.res(); continue; }   // seguro: nadie camina eternamente
       const dx = tg.x - p.position.x, dz = tg.y - p.position.z, dist = Math.hypot(dx, dz), step = tk.speed * dt;
       // si alguien está justo delante, se rodea o se espera un momento (no se traspasan)
-      if (dist > .05) {
+      if (dist > .05 && !p.userData.ghost && !tk.noAvoid) {
         let blocker = null;
         for (const q of people) {
-          if (q === p || !q.visible || q.parent !== p.parent) continue;
+          if (q === p || !q.visible || q.parent !== p.parent || q.userData.ghost) continue;
           const ox = q.position.x - p.position.x, oz = q.position.z - p.position.z, od = Math.hypot(ox, oz);
           if (od < .5 && (ox * dx + oz * dz) / (od * dist || 1) > .35) { blocker = q; break; }
         }
-        if (blocker && (tk.wait ?? 0) < 1.1) {
-          tk.wait = (tk.wait ?? 0) + dt;
+        if (blocker && (tk.wait ?? 0) < .55) {
+          tk.wait = (tk.wait ?? 0) + dt; tk.blocked = (tk.blocked ?? 0) + dt;
+          if (tk.blocked > 2.2) tk.noAvoid = true;   // si lleva un rato rodeando, atraviesa y sigue su camino
           const side = (p.id % 2 ? 1 : -1);
           p.position.x += (-dz / dist) * side * step * .6; p.position.z += (dx / dist) * side * step * .6;
           moving.add(p);
@@ -455,7 +456,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       const p = spawn(n.person, [0, 0], ROT_Y[chair.rot ?? 0], false);
       p.position.set(chair.x + d.w / 2 + sp.dx, .5, chair.y + d.h / 2 + sp.dz);   // las caderas sobre el cojín (a .59 de altura)
       p.userData.faceT = null; sitPerson(p, true); nookPs.push(p);
-      const book = displayBook(BOOK[n.bookId ?? 'alas'] ?? BOOKS[0], .2, .28, .04); book.rotation.x = -.7; book.position.set(0, .22, .16); p.userData.hold.add(book); p.userData.hold.position.set(0, 0, 0);   // el libro en las manos, a la altura del pecho
+      const book = displayBook(BOOK[n.bookId ?? 'alas'] ?? BOOKS[0], .2, .28, .04); book.scale.setScalar(1.25); book.rotation.x = -.8; book.position.set(0, .3, .2); p.userData.hold.add(book); p.userData.hold.position.set(0, 0, 0);   // el libro en las manos, a la altura del pecho
     });
   }
 
@@ -768,7 +769,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       if (sk !== keys.shell) { keys.shell = sk; buildShell(); keys.furn = ''; }
       const fk = JSON.stringify([S.furniture, S.pass?.editions]);
       if (fk !== keys.furn) { keys.furn = fk; buildFurn(); keys.nook = ''; }
-      const nk = JSON.stringify([S.nook, fk]);
+      const nk = JSON.stringify([S.nooks, fk]);
       if (nk !== keys.nook) { keys.nook = nk; syncNook(); }
       const stk = JSON.stringify([S.storage, S.boxes.map((b) => b.id)]);
       if (stk !== keys.store) { keys.store = stk; syncStore(); }
@@ -870,7 +871,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
         walls.length = 0;
         rig.center.set(TOWN_X, 0, 0); rig.target.set(TOWN_X, .9, 0); rig.base = 1; rig.zoom = .45; rig.ext = 60;
         sun.target.position.set(TOWN_X, 0, 0); sun.position.set(TOWN_X + 14, 26, -22);
-        Object.assign(sun.shadow.camera, { left: -42, right: 42, top: 32, bottom: -32, near: 1, far: 90 }); sun.shadow.camera.updateProjectionMatrix();
+        Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 24, bottom: -24, near: 1, far: 90 }); sun.shadow.camera.updateProjectionMatrix();
         fit(); applyTime();
         return;
       }

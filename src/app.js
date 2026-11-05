@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.25.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.26.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -45,7 +45,8 @@ const buzz = (ms = 30) => { if (P.vibrate && navigator.vibrate) navigator.vibrat
 function prepare(s) {
   setBounds(s.expansions);
   s.settings ??= { hard: false };
-  initStory(s); initPass(s); s.doormat ??= 'Bienvenid@s'; s.encargos ??= []; s.web ??= { orders: [], n: 1 }; s.msgs ??= []; s.nooks ??= (s.nook ? [{ person: s.nook.person, bookId: s.nook.bookId }] : []); s.goods ??= {}; s.missedGoods ??= {}; s.ratings ??= {}; s.album ??= []; s.notes ??= '';
+  initStory(s); initPass(s); s.doormat ??= 'Bienvenid@s'; s.encargos ??= []; s.web ??= { orders: [], n: 1 }; if (s.phase === 'morning') s.nooks = [];
+  s.msgs ??= []; s.nooks ??= (s.nook ? [{ person: s.nook.person, bookId: s.nook.bookId }] : []); s.goods ??= {}; s.missedGoods ??= {}; s.ratings ??= {}; s.album ??= []; s.notes ??= '';
   clearBookCaches(applyEditions(s));
   if (s.introSeen == null) s.introSeen = !!s.hero;
   if (s.tut == null && s.hero) s.tut = { i: 999 };
@@ -437,6 +438,13 @@ function takeSpot() {
 
 async function exitShop(e) {
   if (e.p.parent) {
+    e.p.userData.ghost = true;   // al irse no choca con nadie
+    // primero se aparta hacia un lado de la cola y luego va a la puerta (no vuelve hacia atrás entre los que esperan)
+    try {
+      const pass = makePassable(blockedSet(S.furniture)), here = [Math.floor(e.p.position.x), Math.floor(e.p.position.z)], lc = lineCells();
+      const side = [[1, 0], [-1, 0], [2, 0], [-2, 0]].map(([dx, dz]) => [here[0] + dx, here[1] + dz]).find((c) => pass(c[0], c[1]) && !lc.some((l) => l[0] === c[0] && l[1] === c[1]));
+      if (side && world.view === 'shop' && lc.length) await routeTo(e.p, side, rnd(2.2, 2.6), 'shop');
+    } catch { /* sigue por el camino normal */ }
     await routeTo(e.p, entryCell(), rnd(2, 2.5), 'shop');
     const ec = entryCell();
     // si no había camino libre, cruza en línea recta hasta la puerta en vez de desaparecer a mitad de la tienda
@@ -464,6 +472,28 @@ async function updateLine() {
     });
   });
 }
+
+// Al cerrar la tienda, los que leen se levantan, dejan el libro en una estantería y se van por la puerta
+async function readersLeave() {
+  const list = [...(S.nooks ?? [])];
+  if (!list.length) return;
+  const spots = seatSpotsFn(S.furniture);
+  S.nooks = []; persist(); syncWorld();
+  await Promise.all(list.map(async (n, k) => {
+    await wait(k * 600);
+    const sp = spots[k]; if (!sp) return;
+    const d = dims(sp.f.type, sp.f.rot ?? 0);
+    const p = world.spawn(n.person, seatCell(sp.f, S.furniture) ?? [sp.f.x, sp.f.y], ROT_Y_LEAVE(sp.f), false);
+    p.position.set(sp.f.x + d.w / 2 + sp.dx, 0, sp.f.y + d.h / 2 + sp.dz);
+    world.carry(p, n.bookId ?? 'alas');
+    const e = { p };
+    const spot = takeSpot();
+    if (spot) { await routeTo(p, spot.cell, 2); world.face(p, spot.face[0], spot.face[1]); await wait(900); spotsTaken.delete(spot.key); }
+    world.carry(p, null);   // deja el libro en su sitio
+    await exitShop(e);
+  }));
+}
+const ROT_Y_LEAVE = (f) => [0, Math.PI / 2, Math.PI, -Math.PI / 2][f.rot ?? 0];
 
 // Un curioso se sienta en un sillón o sofá a leer un rato (se queda sentado hasta cerrar)
 async function goRead(e, tok) {
@@ -592,7 +622,16 @@ setInterval(() => {
   if (S.phase !== 'serving' || !line.length) return;
   for (let i = line.length - 1; i >= 0; i--) if (!line[i].p?.parent) line.splice(i, 1);
   const e = line[0];
-  if (e && !e.atCounter && !attending && !world.isWalking(e.p)) { e.slotKey = null; updateLine(); }
+  if (e && !e.atCounter && !attending) {
+    e.waitT = (e.waitT ?? 0) + 1.8;
+    if (!world.isWalking(e.p)) { e.slotKey = null; updateLine(); }
+    if (e.waitT > 7) {   // atascado: se le coloca en el mostrador
+      const sc = serviceCell(S.furniture), st = heroStation();
+      world.walkRoute(e.p, null);
+      if (sc) { e.p.position.set(sc[0] + .5, 0, sc[1] + .5); if (st) world.face(e.p, st[0] - e.p.position.x, st[1] - e.p.position.z); }
+      e.atCounter = true; e.waitT = 0; renderServe();
+    }
+  } else if (e) e.waitT = 0;
 }, 1800);
 
 function dispersal() {
@@ -1174,7 +1213,7 @@ function pcRows(q) {
   if (!ids.length) return '<p class="empty">No hay ningún libro con ese nombre.</p>';
   return ids.map((id) => {
     const e = have.get(id) ?? { shop: 0, store: 0 }, k = route[id] ?? 0, total = e.shop + e.store;
-    return `<div class="pc-row ${total ? '' : 'none'}"><span class="cv">${coverSVG(BOOK[id], 30, 45)}</span><div class="t"><b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small></div>
+    return `<div class="pc-row ${total ? '' : 'none'}"><span class="cv">${coverSVG(BOOK[id], 30, 45)}</span><div class="t"><b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)} · ${BOOK[id].price} €</small></div>
       <div class="n">${total ? `<span>Tienda ${e.shop}</span><span>Almacén ${e.store}</span>` : '<span class="out">Agotado</span>'}${k ? `<span class="en">En camino ${k}</span>` : ''}</div></div>`;
   }).join('');
 }
@@ -1689,7 +1728,7 @@ function showPicker() {
   const allIds = [...map.keys()].sort((a, b) => BOOKS.findIndex((x) => x.id === a) - BOOKS.findIndex((x) => x.id === b));
   const slotsFor = () => stkApply(allIds).map((id) => {
     const b = BOOK[id], e = map.get(id), out = e.store + e.shop <= 0;
-    return `<button type="button" class="slot ${out ? 'out' : ''}" ${out ? 'disabled' : `data-act="pickBook" data-id="${id}"`}>${coverSVG(b, 78, 117)}<b>${esc(b.title)}</b>${b.saga ? `<small class="saga">${esc(sagaLabel(b))}</small>` : ''}${S.settings.hard ? '' : `<span class="tags">${tagChips(b.tags.slice(0, 2))}</span>`}${out ? '<small style="color:#f6ecd9">agotado</small>' : e.store > 0 ? `<em>${e.store}</em>` : '<small style="color:#f0c987">solo el expuesto</small>'}</button>`;
+    return `<button type="button" class="slot ${out ? 'out' : ''}" ${out ? 'disabled' : `data-act="pickBook" data-id="${id}"`}>${coverSVG(b, 78, 117)}<b>${esc(b.title)}</b><small class="pr">${b.price} € · dura ${Math.round(b.price * FORMAT_DURA)} €</small>${b.saga ? `<small class="saga">${esc(sagaLabel(b))}</small>` : ''}${S.settings.hard ? '' : `<span class="tags">${tagChips(b.tags.slice(0, 2))}</span>`}${out ? '<small style="color:#f6ecd9">agotado</small>' : e.store > 0 ? `<em>${e.store}</em>` : '<small style="color:#f0c987">solo el expuesto</small>'}</button>`;
   }).join('') || '<p class="empty">Ningún libro coincide con ese filtro.</p>';
   const slots = slotsFor();
   stkRender = () => { const g = $('.shelfgrid'); if (g) g.innerHTML = slotsFor(); };
@@ -1823,7 +1862,7 @@ function stockRowsHTML(rowsAll, hasTable, onTbl) {
   const rows = order.map((id) => [id, byId.get(id)]);
   if (!rowsAll.length) return '<p class="empty">El almacén está vacío. Haz un pedido en Pedidos.</p>';
   if (!rows.length) return '<p class="empty">Ningún libro coincide con ese filtro.</p>';
-  return rows.length ? rows.map(([id, e]) => `<div class="stk"><span class="cv">${coverSVG(BOOK[id], 40, 60)}</span><div class="t"><b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small><div class="stk-act"><span class="pill">Tienda ${e.shop}</span><span class="pill">Almacén ${e.store}</span>${e.shop || !e.store ? '' : `<button type="button" class="btn small" data-act="place" data-id="${id}">Exponer</button>`}${hasTable ? `<button type="button" class="btn small ghost" data-act="toTable" data-id="${id}" title="Poner una copia en la mesa de novedades">${onTbl.has(id) ? `+1 a la mesa (×${onTbl.get(id)})` : 'A la mesa'}</button>` : ''}</div></div></div>`).join('') : '<p class="empty">El almacén está vacío. Haz un pedido en Pedidos.</p>';
+  return rows.length ? rows.map(([id, e]) => `<div class="stk"><span class="cv">${coverSVG(BOOK[id], 40, 60)}</span><div class="t"><b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small><div class="stk-act"><span class="pill pr">${BOOK[id].price} €</span><span class="pill">Tienda ${e.shop}</span><span class="pill">Almacén ${e.store}</span>${e.shop || !e.store ? '' : `<button type="button" class="btn small" data-act="place" data-id="${id}">Exponer</button>`}${hasTable ? `<button type="button" class="btn small ghost" data-act="toTable" data-id="${id}" title="Poner una copia en la mesa de novedades">${onTbl.has(id) ? `+1 a la mesa (×${onTbl.get(id)})` : 'A la mesa'}</button>` : ''}</div></div></div>`).join('') : '<p class="empty">El almacén está vacío. Haz un pedido en Pedidos.</p>';
 }
 
 function panelStock() {
@@ -2312,7 +2351,7 @@ const act = {
   dismiss: () => dismissSheet(),
   nextday: () => dismissSheet(),
   open: () => { startDayService(); setTimeout(updateOpenBtn, 50); },
-  summary: () => showSummary(),
+  summary: async () => { if (busy) return; busy = true; await readersLeave(); busy = false; showSummary(); },
   attend: () => attend(),
   talkOpt: ({ id }) => talkOpt(id),
   pickBook: ({ id }) => pickBook(id),

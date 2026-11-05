@@ -518,3 +518,6 @@ body.intro #openShopBtn, body.inmenu #openShopBtn, body.editing #openShopBtn { d
 .chip-f { display: inline-flex; align-items: center; gap: 4px; border: 2px solid #38211a; background: #fffaf0; color: #38211a; border-radius: 999px; padding: 4px 10px 4px 6px; font: 700 12px var(--sans); cursor: pointer; }
 .chip-f .tile-ic { width: 18px; height: 18px; } .chip-f.on { background: #ffd45c; }
 .bg .hd i b img, .story i b img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+
+.pill.pr { background: #ffe7a8; }
+.picker .slot small.pr { color: #ffe3a0; font: 800 11px var(--sans); }
