@@ -269,9 +269,24 @@ function coffeeCorner(f, ctx) {
   return shade(g);
 }
 
+function ereaderStand(f, ctx) {
+  const g = new THREE.Group();
+  boxAt(g, .86, .72, .5, mWalnut, 0, 0, 0, .03); boxAt(g, .92, .05, .56, mOak, 0, .72, 0, .02);
+  const cols = ['#f2efe6', '#d9566b', '#2a2a2e', '#3a6aa5'];
+  cols.forEach((c, i) => {
+    const d = new THREE.Group();
+    boxAt(d, .15, .24, .018, M(c, .5), 0, 0, 0, .006);
+    boxAt(d, .12, .19, .004, M('#c9d3d0', .3), 0, .025, .011, .002);   // pantalla de tinta
+    d.position.set(-.3 + i * .2, .77, .02); d.rotation.x = -.28; g.add(d);
+    boxAt(g, .1, .02, .05, mDark, -.3 + i * .2, .745, -.02, .004);
+  });
+  boxAt(g, .78, .035, .13, M('#e8d9b8', .8), 0, .68, .26, .008);   // cartel
+  return shade(g);
+}
+
 // Cada constructor devuelve un grupo con origen en el centro de la huella.
 export const BUILD = {
-  shelf, table: roundTable, counter, armchair, sofa, side: sideTable, lamp: floorLamp, plant, cat: catBed, rug, coffee: coffeeCorner,
+  shelf, table: roundTable, counter, armchair, sofa, side: sideTable, lamp: floorLamp, plant, cat: catBed, rug, ereader: ereaderStand, coffee: coffeeCorner,
 };
 
 export function buildFurniture(f, ctx) {

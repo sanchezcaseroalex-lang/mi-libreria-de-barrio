@@ -8,11 +8,10 @@ import {
   newGame, ITEMS, NETWORKS, XP_LEVELS, availableBooks, cozy, storageCount, shelfFree, shelfSlots, containers, furnById,
   inventory, countOf, buyFurniture, placeFurniture, storeFurniture, rotateFurniture, placeBook, takeBack, autoPlace, onDisplay, sellable, buyItem,
   orderBooks, pendingOrders, openShop, offer, dismiss, nextCustomer, nextDay, createAccount, canPost, postPhoto, postVideo,
-  setOnTable, topSellers, tidyReward, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
+  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
 } from './game.js';
 import { newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
 import { HERO_LOOK } from './people3d.js';
-import { runMini, chooseMode } from './mini.js';
 import { runOpenBox, runPackBox } from './boxscene.js';
 import { initAudio, setVolumes, sfx, blip, startMusic, isMusicPlaying } from './audio.js';
 import { CHAPTERS, ANSELMO_WELCOME, initStory, currentChapter, chapterProgress, completeChapter } from './story.js';
@@ -23,7 +22,7 @@ import { showBook3D } from './viewer.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '2026-11-05 · móvil con 7 apps nuevas';
+const BUILD = '2026-11-05 · complementos y e-readers';
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -45,7 +44,7 @@ const buzz = (ms = 30) => { if (P.vibrate && navigator.vibrate) navigator.vibrat
 function prepare(s) {
   setBounds(s.expansions);
   s.settings ??= { hard: false };
-  initStory(s); initPass(s); s.doormat ??= 'Bienvenid@s'; s.encargos ??= []; s.web ??= { orders: [], n: 1 }; s.msgs ??= []; s.ratings ??= {}; s.album ??= []; s.notes ??= '';
+  initStory(s); initPass(s); s.doormat ??= 'Bienvenid@s'; s.encargos ??= []; s.web ??= { orders: [], n: 1 }; s.msgs ??= []; s.goods ??= {}; s.missedGoods ??= {}; s.ratings ??= {}; s.album ??= []; s.notes ??= '';
   clearBookCaches(applyEditions(s));
   if (s.introSeen == null) s.introSeen = !!s.hero;
   if (s.tut == null && s.hero) s.tut = { i: 999 };
@@ -90,6 +89,7 @@ const ICONS = {
   armchair: '<path d="M5 18v-7a3 3 0 0 1 6 0v3h2v-3a3 3 0 0 1 6 0v7M3 18h18M7 18v3M17 18v3"/>',
   shelf: '<path d="M5 3v18M19 3v18M5 9h14M5 15h14M8 4v4M11 5v3M14 4v4M8 10v4M12 11v3M15 10v4"/>',
   lights: '<path d="M3 6c4 4 14 4 18 0M6 9v3M12 11v3M18 9v3"/>',
+  ereader: '<rect x="7" y="3" width="10" height="15" rx="1.5"/><path d="M10 8h4M10 11h4M9 21h6"/>',
   coffee: '<path d="M5 9h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4zM16 10h2a2 2 0 0 1 0 4h-2M8 3c0 2 2 2 2 4M12 3c0 2 2 2 2 4"/>',
   lamp: '<path d="M8 3h8l2 8H6zM12 11v9M8 20h8"/>',
   rug: '<path d="M4 6h16v12H4zM7 9h10v6H7z"/>',
@@ -404,7 +404,7 @@ function browseSpots() {
   };
   for (const f of placed(S.furniture)) {
     if (f.type === 'shelf') { const [dx, dz] = frontDir(f); frontCells(f).forEach((c) => add(c, [-dx, -dz])); }
-    else if (['table', 'cat', 'plant', 'coffee'].includes(f.type)) {
+    else if (['table', 'cat', 'plant', 'coffee', 'ereader'].includes(f.type)) {
       for (const [c, r] of cellsOf(f)) for (const [dc, dr] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) add([c + dc, r + dr], [-dc, -dr]);
     }
   }
@@ -829,7 +829,7 @@ function openPass() {
   const t = tierOf(S), pct = Math.round(((S.pass.pts % SEASON.per) / SEASON.per) * 100);
   const rows = TIERS.map((tr, i) => `<div class="tier ${i < t ? 'reached' : ''}"><b class="tn">${i + 1}</b>${rewardCell(tr.free, 'free', i, false)}${rewardCell(tr.prem, 'prem', i, !S.pass.premium)}</div>`).join('');
   openSheet(`<div class="pass-hero">${passBanner()}<div class="ph-t"><small>${SEASON.name}</small><b>OTOÑO</b><span>${SEASON.title}</span></div><button type="button" class="x" data-act="close" aria-label="Cerrar">×</button></div>
-    <p class="muted">Ganas puntos vendiendo libros, cerrando el día, ordenando estantes y completando capítulos. Cada ${SEASON.per} puntos subes un nivel.</p>
+    <p class="muted">Ganas puntos vendiendo libros, cerrando el día y completando capítulos. Cada ${SEASON.per} puntos subes un nivel.</p>
     <div class="bar"><i style="width:${t >= SEASON.tiers ? 100 : pct}%"></i></div>
     <p class="muted small">Nivel ${t} de ${SEASON.tiers} · ${S.pass.pts} puntos</p>
     ${claimable(S) ? '<button type="button" class="btn primary wide" data-act="passAll">Reclamar todo (' + claimable(S) + ')</button>' : ''}
@@ -1145,6 +1145,50 @@ async function fetchBook() {
   showPicker();
 }
 
+// Tapa blanda o tapa dura: si el cliente ya lo dijo al llegar no se pregunta; si no, lo hablas con él en el mostrador
+function formatTalk(e, id) {
+  const b = BOOK[id], c = e.c;
+  if (c.format) return Promise.resolve(c.format);
+  const dura = Math.round(b.price * FORMAT_DURA);
+  return new Promise((res) => {
+    dlgOpen();
+    playerSays(e, `Lo tengo en tapa blanda (${money(b.price)}) y en tapa dura (${money(dura)}). ¿Cuál prefieres?`, () => {
+      const tooPricey = c.budget && dura > c.budget;
+      const wantsDura = !tooPricey && Math.random() < 0.38;
+      const line = wantsDura ? pickOne(['La tapa dura, que se ve más bonita.', 'Tapa dura, que me hace ilusión.', 'Me quedo con la tapa dura.'])
+        : tooPricey ? 'La dura se me va de presupuesto: tapa blanda.' : pickOne(['La tapa blanda está bien.', 'Tapa blanda, que es más ligera.', 'Con la blanda me sobra.']);
+      c.format = wantsDura ? 'dura' : 'blanda';
+      clientSays(e, line, wantsDura ? 'contenta' : 'neutra', () => { closeDialog(); setTimeout(() => res(c.format), 350); });
+    }, 'neutra');
+  });
+}
+
+// Tras comprar un libro, el cliente puede pedir un complemento (o un lector electrónico si tienes el expositor)
+let upRes = null;
+function upsellTalk(e, it, missing) {
+  return new Promise((res) => {
+    dlgOpen();
+    const line = missing
+      ? pickOne([`¿Tenéis ${it.one}? Me lo llevaría también.`, `Y ya que estoy… ¿os queda ${it.one}?`])
+      : it.color ? pickOne([`Oye, ¿ese ${it.name} del expositor funciona bien? Me lo estoy pensando…`, `Veo ahí ${it.one}. ¿Cuánto cuesta?`])
+        : pickOne([`¿Me pones también ${it.one}?`, `Ya que estoy, ¿me llevo ${it.one}?`, `Uy, qué bonito. ¿Me das ${it.one}?`]);
+    clientSays(e, line, 'contenta', () => {
+      if (missing) {
+        playerSays(e, 'Ahora mismo no me queda, lo siento. ¡Lo pediré!', () => { closeDialog(); setTimeout(() => res(false), 350); }, 'neutra');
+        return;
+      }
+      clearInterval(dlgTimer); dlgNext = null; dlgTyping = false;
+      setImg(dlgR, heroImg('neutra'), heroBust());
+      dlg.classList.add('right-on'); dlg.classList.remove('left-on');
+      $('.dlg-name').textContent = heroName();
+      $('.dlg-text').textContent = `${it.emoji} ${it.name}: ${money(it.price)}.`;
+      $('.dlg-hint').hidden = true;
+      $('.dlg-opts').innerHTML = `<button type="button" class="opt go" data-act="upsell" data-v="y">Añadírselo (${money(it.price)})</button><button type="button" class="link" data-act="upsell" data-v="n">Mejor no</button>`;
+      upRes = (v) => { closeDialog(); setTimeout(() => res(v), 350); };
+    });
+  });
+}
+
 // Ya en el mostrador, con el libro en la mano: el cliente elige entre la edición normal y la especial
 function editionTalk(e, id) {
   const b = BOOK[id], c = e.c;
@@ -1198,7 +1242,8 @@ async function pickBook(id) {
   }
   const e = attending;
   const special = BOOK[id].ed ? await editionTalk(e, id) : false;
-  const r = offer(S, id, { special });
+  const format = BOOK[id].ed ? null : await formatTalk(e, id);
+  const r = offer(S, id, { special, format });
   if (r.error) { world.carry(world.hero, null); toast(r.error); busy = false; talking = true; talkAgain(e, e.c.line, 'dudosa'); return; }
   persist();
   renderTop();
@@ -1238,7 +1283,12 @@ async function doDismiss(penalty = true) {
 async function finishCustomer(e, r, id) {
   const p = e.p;
   if (r.sold) {
-    world.say(p, `${r.message}  +${r.price + r.tip} €`, 'happy'); buzz(25); sfx('coin');
+    let extra = 0;
+    if (!e.c.pickup && !e.c.parcel) {
+      const u = upsellFor(S);
+      if (u) { const ok = await upsellTalk(e, u.item, u.missing); if (ok && !u.missing) { extra = sellGood(S, u.item.id); persist(); renderTop(); } }
+    }
+    world.say(p, `${r.message}  +${r.price + r.tip + extra} €`, 'happy'); buzz(25); sfx('coin');
     await wait(1200);
     world.carry(world.hero, null);
     await wait(600);
@@ -1348,7 +1398,6 @@ function panelShop() {
       <button type="button" class="btn" data-act="arrange" ${notShown && free ? '' : 'disabled'}>Exponer libros</button>
       <button type="button" class="btn" data-act="decor" ${S.phase === 'serving' ? 'disabled' : ''}>Decorar</button>
     </div>
-    <button type="button" class="btn wide" data-act="tidy" ${S.phase !== 'morning' || S.tidyDay === S.day ? 'disabled' : ''}>${S.tidyDay === S.day ? 'Estantes ordenados hoy ✓ (propinas +30 %)' : 'Ordenar estantes (minijuego)'}</button>
     <div class="bar"><i style="width:${total ? Math.round((used / total) * 100) : 0}%"></i></div>
     <p class="muted small">${used} de ${total} huecos de estantería ocupados · toca una estantería o la mesa para ver sus libros.</p>
     ${S.day === 1 && !S.welcomed ? '<button type="button" class="link" data-act="welcome">¿Cómo se juega?</button>' : ''}`;
@@ -1611,6 +1660,20 @@ function encargosHTML() {
   return `<div class="story-card"><p class="kick">Encargos de clientes</p>${rows}<p class="muted small">Si mañana no tienes el libro, el cliente se irá enfadado y te dejará una mala reseña.</p></div>`;
 }
 
+function goodRow(g) {
+  const lock = !goodUnlocked(S, g), n = goodStock(S, g.id);
+  if (lock) return `<div class="up lock"><span class="gi">${g.emoji}</span><div><b>${g.name}</b><small>Nivel ${g.level}</small></div></div>`;
+  return `<div class="up"><span class="gi" style="${g.color ? `background:${g.color}` : ''}">${g.emoji}</span><div><b>${g.name}</b><small>Coste ${g.cost} € · venta ${g.price} € · tienes ${n}</small></div>
+    <button type="button" class="btn small" data-act="buyGood" data-id="${g.id}" data-n="1">+1</button><button type="button" class="btn small primary" data-act="buyGood" data-id="${g.id}" data-n="${g.color ? 2 : 5}">+${g.color ? 2 : 5}</button></div>`;
+}
+function goodsHTML() {
+  const lock = S.level < GOODS[0].level;
+  const ers = hasStand(S)
+    ? `<h3>Lectores electrónicos</h3><div class="ups">${EREADERS.map(goodRow).join('')}</div>`
+    : `<p class="note">Con el <b>Expositor de e-readers</b> (nivel 7, en Mejoras) podrás vender lectores electrónicos.</p>`;
+  return lock ? '' : `<h3>Complementos</h3><p class="muted small">Llegan al momento a tu almacén. Los clientes los piden al pagar un libro.</p><div class="ups">${GOODS.map(goodRow).join('')}</div>${ers}`;
+}
+
 function panelOrders() {
   const pending = pendingOrders(S);
   const own = sellable(S);
@@ -1625,7 +1688,8 @@ function panelOrders() {
     <p class="muted">Llegan a la mañana siguiente, en cajas de hasta 6 libros al almacén. ${pending ? `Tienes <b>${pending}</b> libros en camino.` : 'No tienes pedidos pendientes.'}</p>
     ${webOrdersHTML()}
     ${encargosHTML()}
-    <div class="grid pad">${grid}</div>`;
+    ${goodsHTML()}
+    <h3>Libros</h3><div class="grid pad">${grid}</div>`;
 }
 
 /* ---------- Panel: Mejoras ---------- */
@@ -1915,6 +1979,7 @@ function showSummary() {
   waitSheet(`${sheetHead(`Resumen del día ${s.day}`)}
     <div class="stats"><div><b>${s.sales}</b><span>ventas</span></div><div><b>${money2(s.net)}</b><span>te quedas</span></div><div><b>${s.xp}</b><span>puntos</span></div></div>
     <table class="books"><tr><td>Ventas (IVA incluido)</td><td>${money2(s.gross)}</td></tr>
+      ${s.goods ? `<tr><td>Incluye ${s.goods} ${s.goods === 1 ? 'complemento' : 'complementos'}</td><td></td></tr>` : ''}
       ${s.tips ? `<tr><td>Propinas</td><td>+${money2(s.tips)}</td></tr>` : ''}
       <tr class="neg"><td>IVA de los libros (4 %)</td><td>−${money2(s.iva)}</td></tr>
       <tr class="neg"><td>Alquiler y suministros</td><td>−${money2(s.rent)}</td></tr>
@@ -2169,25 +2234,12 @@ const act = {
     if (newFlow) { newFlow = false; world.stopPedestrians(); world.setTownName(S.shopName); world.setView('town'); runIntro(false); }
     else toast(`Ahora eres ${name}.`);
   },
-  tidy: async () => {
-    if (S.phase !== 'morning' || S.tidyDay === S.day || busy) return;
-    busy = true; panelOpen = false; renderPanel();
-    const mode = chooseMode(S.level, S.lastMini);
-    S.lastMini = mode;
-    const r = await runMini({ mode, hard: S.settings.hard, level: S.level, buzz });
-    busy = false;
-    if (r) {
-      const rw = tidyReward(S, r.stars);
-      persist(); renderTop();
-      toast(`Estantes ordenados · +${rw.money} € · +${rw.xp} XP · propinas +30 % hoy`);
-      await showLevelUps();
-    }
-    renderPanel();
-  },
   replayTut: () => { if (S.phase !== 'morning' || busy) { toast('Termina antes la jornada.'); return; } closeSheet(); panelOpen = false; renderPanel(); tutStart(); },
   replayIntro: () => { if (busy || S.phase === 'serving') { toast('Termina antes la jornada.'); return; } closeSheet(); runIntro(false); },
   creatorBack: () => { newFlow = false; introPending = false; world.stopPedestrians(); closeSheet(); document.body.classList.remove('intro'); S = prepare(stored() ?? newGame()); goShop(); showMenu(); },
   openPass: () => { openPass(); },
+  upsell: ({ v }) => { const f = upRes; upRes = null; f?.(v === 'y'); },
+  buyGood: ({ id, n }) => { const err = buyGood(S, id, Number(n) || 1); if (err) { toast(err); return; } sfx('coin'); persist(); renderTop(); renderPanel(); toast(`${GOOD[id].name} ×${Number(n) || 1} en el almacén.`); },
   edPick: ({ v }) => { closeSheet(); const r = edResolve; edResolve = null; r?.(v === 's'); },
   passAll: async () => {
     const prev = $('.pass-sheet'); if (prev) passScroll = prev.scrollTop;
@@ -2230,7 +2282,7 @@ const act = {
 
 document.addEventListener('pointerdown', () => { initAudio(); applyVolumes(); startMusic(); }, { once: false, capture: true });
 document.addEventListener('click', (e) => {
-  if (e.target.closest('button, [data-act]') && !e.target.closest('#mini')) sfx('click');
+  if (e.target.closest('button, [data-act]')) sfx('click');
   const el = e.target.closest('[data-act]');
   if (el && !el.disabled) act[el.dataset.act]?.(el.dataset, el, e);
 });

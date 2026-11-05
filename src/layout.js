@@ -45,9 +45,10 @@ export const FURN = {
   lamp: { name: 'Lámpara de pie', w: 1, h: 1, norot: true, price: () => 70, level: lv([4, 4, 6]), max: 3, cozy: 1, desc: 'Luz cálida para las tardes.' },
   side: { name: 'Mesita', w: 1, h: 1, norot: true, price: () => 45, level: lv([4, 5, 6]), max: 3, cozy: 0.5, desc: 'Con su taza de té.' },
   sofa: { name: 'Sofá de lectura', w: 2, h: 1, price: (n) => 260 + 60 * n, level: lv([6, 8]), max: 2, cozy: 2, desc: 'Dos clientes pueden leer a la vez.' },
+  ereader: { name: 'Expositor de e-readers', w: 1, h: 1, price: () => 220, level: lv([7]), max: 1, cozy: 0.5, desc: 'Con 4 lectores electrónicos de varias marcas: se venden caros y dan mucho margen.' },
   coffee: { name: 'Rincón de café', w: 1, h: 1, norot: true, price: () => 350, level: lv([9]), max: 1, cozy: 3, desc: 'Más propinas y más calidez.' },
 };
-export const FURN_ORDER = ['shelf', 'table', 'plant', 'cat', 'rug', 'armchair', 'lamp', 'side', 'sofa', 'coffee'];
+export const FURN_ORDER = ['shelf', 'table', 'plant', 'cat', 'rug', 'armchair', 'lamp', 'side', 'sofa', 'ereader', 'coffee'];
 
 // Tamaño en casillas según el giro
 export const dims = (type, rot = 0) => {

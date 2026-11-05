@@ -450,9 +450,16 @@ export function newCustomer(char, target, type) {
     if (c.scenario === 'similar') { c.simRef = refTitle(target); c.refSaid = refTitle(target); if (!c.revealed.length) c.revealed = [b.tags[0]]; }
     if (c.scenario === 'budget') { c.budget = b.price + Math.floor(Math.random() * 4); c.scenario = null; }
   }
+  if (!b.ed && Math.random() < 0.4) c.format = Math.random() < 0.5 ? 'dura' : 'blanda';
   c.line = openingLine(c);
+  if (c.format) c.line += ' ' + pick(FORMAT_ASK[c.format]);
   return c;
 }
+
+const FORMAT_ASK = {
+  dura: ['Si puede ser, en tapa dura.', 'Me gustaría en tapa dura: es para tenerlo en la estantería.', 'En tapa dura, que sea para regalo.'],
+  blanda: ['Mejor en tapa blanda, que pesa menos.', 'En tapa blanda, por favor: lo llevo en el bolso.', 'Tapa blanda, que es más cómoda para leer en la cama.'],
+};
 
 export const ENCARGO_YES = ['¡Perfecto! Mañana paso a recogerlo.', 'Genial, vengo mañana a por él. ¡Gracias!', 'Sí, sí, encárgamelo. Mañana me tienes aquí.', 'Pues claro, me parece una idea estupenda. Hasta mañana.'];
 export const ENCARGO_NO = ['Uf, lo necesitaba hoy… Gracias igualmente.', 'No, mejor lo busco en otro sitio. ¡Gracias!', 'Mmm, no puedo esperar. Otro día será.'];

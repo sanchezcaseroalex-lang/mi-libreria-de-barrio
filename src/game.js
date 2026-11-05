@@ -357,6 +357,63 @@ export function startDay(s) {
   s.today = { sales: 0, revenue: 0, tips: 0, xp: 0, left: 0, level0: s.level, money0: s.money };
 }
 
+/* ---------- Tapa blanda / tapa dura ---------- */
+
+export const FORMAT_DURA = 1.3;   // la tapa dura cuesta un 30 % más
+
+/* ---------- Complementos (marcapáginas, libretas…) y lectores electrónicos ---------- */
+
+export const GOODS = [
+  { id: 'marcapaginas', name: 'Marcapáginas', one: 'un marcapáginas', price: 3, cost: 1, level: 2, emoji: '🔖' },
+  { id: 'libreta', name: 'Libreta', one: 'una libreta', price: 9, cost: 4, level: 3, emoji: '📓' },
+  { id: 'vela', name: 'Vela aromática', one: 'una vela aromática', price: 14, cost: 6, level: 4, emoji: '🕯️' },
+  { id: 'tote', name: 'Tote bag', one: 'una tote bag', price: 12, cost: 5, level: 5, emoji: '👜' },
+  { id: 'poster', name: 'Póster', one: 'un póster', price: 10, cost: 4, level: 6, emoji: '🖼️' },
+];
+// Lectores electrónicos de marcas inventadas: precio de venta y coste para ti
+export const EREADERS = [
+  { id: 'er_luma', name: 'Luma Reader', one: 'un Luma Reader', price: 99, cost: 48, color: '#f2efe6', emoji: '📱' },
+  { id: 'er_tinta', name: 'Tinta Mini', one: 'un Tinta Mini', price: 129, cost: 60, color: '#d9566b', emoji: '📱' },
+  { id: 'er_pagina', name: 'Página Pro', one: 'un Página Pro', price: 150, cost: 70, color: '#2a2a2e', emoji: '📱' },
+  { id: 'er_aurora', name: 'Aurora Max', one: 'un Aurora Max', price: 189, cost: 90, color: '#3a6aa5', emoji: '📱' },
+];
+export const ALL_GOODS = [...GOODS, ...EREADERS];
+export const GOOD = Object.fromEntries(ALL_GOODS.map((g) => [g.id, g]));
+export const hasStand = (s) => placed(s.furniture).some((f) => f.type === 'ereader');
+export const goodStock = (s, id) => s.goods?.[id] ?? 0;
+export const goodUnlocked = (s, g) => (g.color ? hasStand(s) : s.level >= g.level);
+
+export function buyGood(s, id, qty = 1) {
+  const g = GOOD[id];
+  if (!g || !goodUnlocked(s, g)) return 'Todavía no puedes vender eso.';
+  const cost = g.cost * qty;
+  if (s.money < cost) return 'No te llega el dinero.';
+  s.money = Math.round((s.money - cost) * 100) / 100;
+  s.goods ??= {};
+  s.goods[id] = (s.goods[id] ?? 0) + qty;
+  return null;
+}
+export function sellGood(s, id) {
+  const g = GOOD[id];
+  if (!g || goodStock(s, id) <= 0) return 0;
+  s.goods[id]--;
+  s.money += g.price; s.today.revenue += g.price; s.today.goods = (s.today.goods ?? 0) + 1;
+  addPts(s, 4); gainXp(s, g.color ? 12 : 3);
+  s.soldGoods ??= {}; s.soldGoods[id] = (s.soldGoods[id] ?? 0) + 1;
+  return g.price;
+}
+// ¿Qué te pide un cliente que acaba de comprar un libro? null si nada
+export function upsellFor(s) {
+  const chance = Math.min(0.6, 0.3 + s.level * 0.03);
+  if (Math.random() > chance) return null;
+  const unlocked = GOODS.filter((g) => goodUnlocked(s, g));
+  const stocked = [...unlocked, ...(Math.random() < 0.25 ? EREADERS.filter((g) => goodUnlocked(s, g)) : [])].filter((g) => goodStock(s, g.id) > 0);
+  if (stocked.length) return { item: stocked[Math.floor(Math.random() * stocked.length)], missing: false };
+  const lacking = unlocked.filter((g) => goodStock(s, g.id) <= 0);
+  if (lacking.length && Math.random() < 0.5) { const g = lacking[Math.floor(Math.random() * lacking.length)]; s.missedGoods ??= {}; s.missedGoods[g.id] = (s.missedGoods[g.id] ?? 0) + 1; return { item: g, missing: true }; }
+  return null;
+}
+
 /* ---------- Mensajes de clientes (app del teléfono) ---------- */
 
 const MSG_KEEP = 24;
@@ -583,16 +640,6 @@ function maybeReview(s, book, stars) {
   return post;
 }
 
-// Minijuego de ordenar estantes: una vez por día; premia con dinero, experiencia y mejores propinas hoy
-export function tidyReward(s, stars) {
-  const money = 8 + 5 * stars + 2 * s.level;
-  s.money = Math.round((s.money + money) * 100) / 100;
-  s.tidyDay = s.day;
-  addPts(s, 15);
-  gainXp(s, 6 + 3 * stars);
-  return { money, xp: 6 + 3 * stars };
-}
-
 function gainXp(s, amount) {
   s.xp += amount;
   s.today.xp += amount;
@@ -609,7 +656,9 @@ export function offer(s, bookId, opts = {}) {
   if (!c || !book) return { error: 'No hay cliente.' };
   let score = evaluate(book, c);
   const special = !!book.ed && !!opts.special;
-  if (c.budget && score > 0 && book.price * (special ? book.ed.mult : 1) > c.budget) {
+  const format = book.ed ? null : (opts.format ?? c.format ?? 'blanda');   // tapa blanda o tapa dura (las ediciones especiales van aparte)
+  const fmul = format === 'dura' ? FORMAT_DURA : 1;
+  if (c.budget && score > 0 && book.price * fmul * (special ? book.ed.mult : 1) > c.budget) {
     c.tries--;
     return { sold: false, score: 0, left: c.tries <= 0, message: 'Uy, eso se me va de presupuesto… ¿Tienes algo más barato?' };
   }
@@ -631,10 +680,10 @@ export function offer(s, bookId, opts = {}) {
   const place = takeCopy(s, bookId);
   if (!place) return { error: 'Ya no te quedan ejemplares de ese libro.' };
   const trending = s.trend.some((t) => t.id === bookId && t.until >= s.day);
-  const price = Math.round(book.price * (special ? book.ed.mult : 1) * (place.onTable ? 1.1 : 1) * (trending ? 1.2 : 1));
+  const price = Math.round(book.price * fmul * (special ? book.ed.mult : 1) * (place.onTable ? 1.1 : 1) * (trending ? 1.2 : 1));
   addPts(s, 10);
   s.soldBy ??= {}; s.soldBy[bookId] = (s.soldBy[bookId] ?? 0) + 1;
-  const tip = score >= 2 ? Math.round(price * 0.1 * Math.min(1, cozy(s) / 8) * (countOf(s, 'coffee') && placed(s.furniture).some((f) => f.type === 'coffee') ? 1.5 : 1) * (s.tidyDay === s.day ? 1.3 : 1) * (c.collector && special ? 2 : 1) * 10) / 10 : 0;
+  const tip = score >= 2 ? Math.round(price * 0.1 * Math.min(1, cozy(s) / 8) * (countOf(s, 'coffee') && placed(s.furniture).some((f) => f.type === 'coffee') ? 1.5 : 1) * (c.collector && special ? 2 : 1) * 10) / 10 : 0;
   s.money += price + tip;
   s.today.sales++;
   s.today.revenue += price;
@@ -652,7 +701,7 @@ export function offer(s, bookId, opts = {}) {
     s.rep += 1;
   }
   if (c.pickup) { s.encargos = (s.encargos ?? []).filter((e) => e.uid !== c.encargoUid); s.rep += 1; s.followers += 1; }
-  return { sold: true, special, score, price, tip, stars, review: post, reads, fetched: place.fetched, message: thanksLine(c) };
+  return { sold: true, special, format, score, price, tip, stars, review: post, reads, fetched: place.fetched, message: thanksLine(c) };
 }
 
 // penalty = false cuando el cliente pedía algo que de verdad no tenías: se va sin enfado
