@@ -8,7 +8,7 @@ import {
   newGame, ITEMS, NETWORKS, XP_LEVELS, availableBooks, cozy, storageCount, shelfFree, shelfSlots, containers, furnById,
   inventory, countOf, buyFurniture, placeFurniture, storeFurniture, rotateFurniture, placeBook, takeBack, autoPlace, onDisplay, sellable, buyItem,
   orderBooks, pendingOrders, openShop, offer, dismiss, nextCustomer, nextDay, createAccount, canPost, postPhoto, postVideo,
-  setOnTable, topSellers, tidyReward, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
+  setOnTable, topSellers, tidyReward, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
 } from './game.js';
 import { newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
 import { HERO_LOOK } from './people3d.js';
@@ -23,7 +23,7 @@ import { showBook3D } from './viewer.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '2026-11-05 · precios y repartidor';
+const BUILD = '2026-11-05 · móvil con 7 apps nuevas';
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -45,7 +45,7 @@ const buzz = (ms = 30) => { if (P.vibrate && navigator.vibrate) navigator.vibrat
 function prepare(s) {
   setBounds(s.expansions);
   s.settings ??= { hard: false };
-  initStory(s); initPass(s); s.doormat ??= 'Bienvenid@s'; s.encargos ??= []; s.web ??= { orders: [], n: 1 };
+  initStory(s); initPass(s); s.doormat ??= 'Bienvenid@s'; s.encargos ??= []; s.web ??= { orders: [], n: 1 }; s.msgs ??= []; s.ratings ??= {}; s.album ??= []; s.notes ??= '';
   clearBookCaches(applyEditions(s));
   if (s.introSeen == null) s.introSeen = !!s.hero;
   if (s.tut == null && s.hero) s.tut = { i: 999 };
@@ -1519,13 +1519,14 @@ function panelStock() {
   const map = sellable(S);
   const rows = [...map.entries()].sort((a, b) => BOOKS.findIndex((x) => x.id === a[0]) - BOOKS.findIndex((x) => x.id === b[0]));
   const holders = placed(S.furniture).filter((f) => f.type === 'shelf' || f.type === 'table');
+  const hasTable = holders.some((f) => f.type === 'table'), onTbl = new Set(holders.filter((f) => f.type === 'table').flatMap((f) => f.books));
   panelEl.innerHTML = `
     <div class="pn-h"><h2>Almacén</h2><button type="button" class="x" data-act="tab" data-id="stock" aria-label="Cerrar">×</button></div>
     <p class="muted">${S.boxes.length ? `Recién llegado: <b>${S.boxes.length}</b> ${S.boxes.length === 1 ? 'caja' : 'cajas'} por abrir (toca una caja en la sala o pulsa Abrir).` : 'No hay cajas nuevas.'} Tienes ${storageCount(S)} libros guardados.</p>
     ${S.boxes.length ? `<h3>Recién llegado</h3>${S.boxes.map((b) => `<div class="boxcard"><svg viewBox="0 0 48 48" fill="none" stroke="#38211a" stroke-width="2.4" stroke-linejoin="round"><path d="M24 6 6 14v20l18 8 18-8V14z" fill="#d9a766"/><path d="M6 14l18 8 18-8M24 22v20"/></svg><div class="t"><b>Pedido del día ${b.day}</b><br>${boxBooks(b)} libros · ${b.items.length} ${b.items.length === 1 ? 'título' : 'títulos'}</div><button type="button" class="btn small primary" data-act="openBox" data-id="${b.id}">Abrir</button></div>`).join('')}` : ''}
     ${topHTML()}
     <h3>Existencias</h3>
-    ${rows.length ? rows.map(([id, e]) => `<div class="stk"><span class="cv">${coverSVG(BOOK[id], 34, 51)}</span><div class="t"><b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small></div><span class="pill">Tienda ${e.shop}</span><span class="pill">Almacén ${e.store}</span>${e.shop ? '' : `<button type="button" class="btn small" data-act="place" data-id="${id}">Exponer</button>`}<button type="button" class="btn small ghost" data-act="toTable" data-id="${id}" title="Poner en la mesa de novedades y más vendidos">A la mesa</button></div>`).join('') : '<p class="empty">El almacén está vacío. Haz un pedido en Pedidos.</p>'}
+    ${rows.length ? rows.map(([id, e]) => `<div class="stk"><span class="cv">${coverSVG(BOOK[id], 40, 60)}</span><div class="t"><b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small><div class="stk-act"><span class="pill">Tienda ${e.shop}</span><span class="pill">Almacén ${e.store}</span>${e.shop || !e.store ? '' : `<button type="button" class="btn small" data-act="place" data-id="${id}">Exponer</button>`}${hasTable && !onTbl.has(id) ? `<button type="button" class="btn small ghost" data-act="toTable" data-id="${id}" title="Poner en la mesa de novedades">A la mesa</button>` : ''}</div></div></div>`).join('') : '<p class="empty">El almacén está vacío. Haz un pedido en Pedidos.</p>'}
     <button type="button" class="btn wide" data-act="autoall" ${rows.some(([, e]) => !e.shop) && shelfFree(S) ? '' : 'disabled'}>Exponer un ejemplar de cada título</button>
     ${holders.map((f) => `<button type="button" class="btn wide ghost" data-act="furn" data-uid="${f.uid}">${f.type === 'shelf' ? 'Estantería' : 'Mesa de novedades'} (${f.type === 'shelf' ? f.rows.flat().length : f.books.length} libros)</button>`).join('')}`;
 }
@@ -1664,7 +1665,7 @@ const ago = (day) => (S.day - day === 0 ? 'hoy' : S.day - day === 1 ? 'ayer' : `
 
 /* ---------- El móvil: Plumas (estilo Twitter) y Bookgram (estilo Instagram) ---------- */
 
-const PH = { app: null, tab: 'inicio', picking: false };
+const PH = { app: null, tab: 'inicio', picking: false, place: null };
 const phoneEl = $('#phone');
 const svgi = (p, fill = 'none', sw = 1.9) => `<svg viewBox="0 0 24 24" fill="${fill}" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const G = {
@@ -1689,6 +1690,8 @@ const G = {
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/>',
   phone: '<path d="M6 3h4l2 5-2.5 1.5a11 11 0 0 0 5 5L16 12l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 4 6a2 2 0 0 1 2-3z"/>',
   box: '<path d="M3 8 12 4l9 4v9l-9 4-9-4zM3 8l9 4 9-4M12 12v9"/>',
+  bank: '<path d="M3 10 12 4l9 6zM5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
+  star: '<path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9L3.5 9.7l5.9-.8z"/>',
   web: '<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
 };
 const hue = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
@@ -1712,18 +1715,20 @@ function renderPhone() {
   dev.classList.toggle('home', !PH.app);
   const sc = $('#phScreen');
   if (!PH.app) { sc.innerHTML = phoneHome(); return; }
-  sc.innerHTML = PH.app === 'plumas' ? appPlumas() : PH.app === 'tienda' ? appTienda() : appBookgram();
+  const APPS = { plumas: appPlumas, tienda: appTienda, mensajes: appMensajes, agenda: appAgenda, banco: appBanco, resenas: appResenas, camara: appCamara, mapa: appMapa, notas: appNotas };
+  if (PH.app === 'mensajes') { (S.msgs ?? []).forEach((m) => { if (!m.options?.length) m.read = true; }); }
+  sc.innerHTML = (APPS[PH.app] ?? appBookgram)();
 }
 
 function phoneHome() {
-  const app = (id, label, cls, glyph, lvl) => {
+  const app = (id, label, cls, glyph, lvl, badge = 0) => {
     const lock = lvl && S.level < lvl;
-    return `<button type="button" class="app ${lock ? 'lock' : ''}" data-act="${id ? 'openApp' : 'noApp'}" ${id ? `data-app="${id}"` : ''}><span class="sq ${cls}">${id === 'tienda' ? `<img class="rx" src="${rodeosDataURL(128, 128, { icon: true })}" alt="">` : svgi(glyph)}${lock ? `<span class="lv">Nivel ${lvl}</span>` : ''}</span>${label}</button>`;
+    return `<button type="button" class="app ${lock ? 'lock' : ''}" data-act="${id ? 'openApp' : 'noApp'}" ${id ? `data-app="${id}"` : ''}><span class="sq ${cls}">${id === 'tienda' ? `<img class="rx" src="${rodeosDataURL(128, 128, { icon: true })}" alt="">` : svgi(glyph)}${lock ? `<span class="lv">Nivel ${lvl}</span>` : ''}${badge ? `<i class="bdg">${badge}</i>` : ''}</span>${label}</button>`;
   };
   return `<div class="ph-wall">${statusBar(true)}<div class="ph-apps">
     ${app('plumas', 'Plumas', 'plumas', G.feather, NETWORKS.pluma.level)}${app('bookgram', 'Bookgram', 'bookgram', G.camera, NETWORKS.foto.level)}
-    ${app('tienda', 'Pedidos', 'tienda', G.box, WEB_LEVEL)}${app(null, 'Notas', 'g2', G.note)}${app(null, 'Mensajes', 'g1', G.comment)}
-    ${app(null, 'Música', 'g3', G.music)}${app(null, 'Mapas', 'g1', G.map)}${app(null, 'Reloj', 'g4', G.clock)}${app(null, 'Ajustes', 'g4', G.gear)}
+    ${app('tienda', 'Pedidos', 'tienda', G.box, WEB_LEVEL)}${app('mensajes', 'Mensajes', 'g1', G.comment, 0, unreadCount(S))}
+    ${app('agenda', 'Agenda', 'g5', G.clock)}${app('banco', 'Banco', 'g2', G.bank)}${app('resenas', 'Reseñas', 'g3', G.star)}${app('camara', 'Cámara', 'g4', G.camera)}${app('mapa', 'Mapas', 'g1', G.map)}${app('notas', 'Notas', 'g2', G.note)}${app(null, 'Música', 'g3', G.music)}${app(null, 'Ajustes', 'g4', G.gear)}
   </div><div class="ph-dock">${app(null, '', 'g1', G.phone)}${app(null, '', 'g5', G.web)}${app(null, '', 'g1', G.comment)}${app(null, '', 'g3', G.music)}</div></div>`;
 }
 
@@ -1804,6 +1809,95 @@ function appBookgram() {
     <button type="button" data-act="noApp">${svgi(G.heart, 'none', 2.1)}</button>
     <button type="button" class="${PH.tab === 'perfil' ? 'on' : ''}" data-act="bgTab" data-id="perfil">${svgi(G.user, 'none', 2.1)}</button></div>` : '<div class="app-nav"></div>';
   return `<div class="bg" style="display:flex;flex-direction:column;height:100%">${statusBar(false)}<div class="app-top"><span class="logo">Bookgram</span><span class="ico">${svgi(G.heart)}${svgi(G.send)}</span></div><div class="app-body">${body}</div>${nav}</div>`;
+}
+
+/* ---------- Más aplicaciones del teléfono: Mensajes, Agenda, Banco, Reseñas, Cámara, Mapas y Notas ---------- */
+
+const stars5 = (v) => `<span class="st5">${'★'.repeat(Math.round(v))}<i>${'★'.repeat(5 - Math.round(v))}</i></span>`;
+const gen = (cls, title, body, sub = '') => `<div class="pl gen ${cls}">${statusBar(false)}<div class="gn-top"><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}</div><div class="app-body">${body}</div></div>`;
+const unread = () => (S.msgs ?? []).filter((m) => !m.read).length;
+
+function appMensajes() {
+  const msgs = S.msgs ?? [];
+  const body = msgs.length ? msgs.map((m) => {
+    const ch = CAST_BY_ID[m.charId];
+    const opts = !m.done && m.options?.length ? `<div class="mg-opts">${m.options.map((o) => `<button type="button" data-act="msgReply" data-id="${m.id}" data-opt="${o.id}">${esc(o.label)}</button>`).join('')}</div>` : '';
+    const mine = m.done && m.chosen ? `<div class="mg-me">${esc(m.chosen)}</div>` : '';
+    const reply = m.done && m.reply ? `<div class="mg-in"><span>${esc(m.reply)}</span></div>` : '';
+    return `<div class="mg ${m.read ? '' : 'new'}"><div class="mg-h"><span class="pic" style="background:hsl(${hue(m.name)} 45% 55%)">${esc(m.name[0])}</span><b>${esc(m.name)}</b><small>${ago(m.day)}</small></div>
+      <div class="mg-in"><span>${esc(m.text)}</span></div>${opts}${mine}${reply}</div>`;
+  }).join('') : '<div class="signup"><p>Todavía no te ha escrito nadie. Según avance la librería, los clientes habituales te mandarán mensajes: reservas, recomendaciones y alguna sorpresa.</p></div>';
+  return gen('mensajes', 'Mensajes', body, unread() ? `${unread()} sin leer` : '');
+}
+
+function appAgenda() {
+  const have = sellable(S);
+  const stock = (id) => (have.get(id)?.shop ?? 0) + (have.get(id)?.store ?? 0);
+  const sec = (t, items, empty) => `<div class="ag-sec"><h4>${t}</h4>${items.length ? items.join('') : `<p class="ag-empty">${empty}</p>`}</div>`;
+  const today = [];
+  if (S.event) today.push(`<div class="ag-it ev">${S.event.type === 'autor' ? `Firma de <b>${esc(S.event.who)}</b>: viene gente a por «${esc(BOOK[S.event.bookId].title)}»` : `Club de lectura con «${esc(BOOK[S.event.bookId].title)}»`}${stock(S.event.bookId) ? '' : ' <em>(¡no te quedan!)</em>'}</div>`);
+  S.trend.filter((t) => t.until >= S.day).forEach((t) => today.push(`<div class="ag-it">Tendencia: <b>${esc(BOOK[t.id].title)}</b>${stock(t.id) ? '' : ' <em>(agotado)</em>'}</div>`));
+  const pick = (S.encargos ?? []).map((e) => `<div class="ag-it"><b>${esc(e.name)}</b> vendrá a por «${esc(BOOK[e.bookId].title)}» ${e.day < S.day ? 'hoy' : 'mañana'}${stock(e.bookId) ? '' : ' <em>(no tienes copias)</em>'}</div>`);
+  const route = (S.orders ?? []).map((o) => `<div class="ag-it">${o.qty}× «${esc(BOOK[o.id].title)}» · ${o.arrive <= S.day ? 'llega hoy' : o.arrive === S.day + 1 ? 'llega mañana' : `llega el día ${o.arrive}`}</div>`);
+  const web = (S.web?.orders ?? []).filter((o) => o.status !== 'entregado' && o.status !== 'rechazado').map((o) => `<div class="ag-it">${esc(o.who)}: ${{ nuevo: 'pendiente de aceptar', aceptado: 'por preparar', listo: o.mode === 'envio' ? 'listo para Rodeos Express' : 'listo para recoger' }[o.status] ?? ''}</div>`);
+  const sold = Object.keys(S.soldBy ?? {}).filter((id) => stock(id) === 0 && !(S.orders ?? []).some((o) => o.id === id)).slice(0, 6).map((id) => `<div class="ag-it">Agotado y sin pedir: <b>${esc(BOOK[id].title)}</b></div>`);
+  const msgs = unread() + (S.msgs ?? []).filter((m) => !m.done && m.options?.length && m.read).length;
+  return gen('agenda', 'Agenda', `<div class="ag-day">Día ${S.day} · ${S.weather === 'lluvia' ? 'lluvia' : S.weather === 'nublado' ? 'nublado' : 'sol'}</div>
+    ${sec('Hoy', today, 'Nada especial hoy.')}${sec('Clientes que vienen a recoger', pick, 'Nadie ha encargado nada.')}${sec('Pedidos en camino', route, 'No esperas cajas.')}
+    ${sec('Pedidos online', web, 'Sin pedidos online.')}${sec('Por reponer', sold, 'Todo lo que vendes está en stock.')}${sec('Mensajes', msgs ? [`<div class="ag-it">Tienes <b>${msgs}</b> ${msgs === 1 ? 'mensaje' : 'mensajes'} por responder.</div>`] : [], 'Todo respondido.')}`);
+}
+
+function appBanco() {
+  const h = (S.history ?? []).slice(-10);
+  const max = Math.max(1, ...h.map((x) => Math.abs(x.profit)));
+  const bars = h.length ? `<div class="bk-chart">${h.map((x) => `<div class="bkb ${x.profit < 0 ? 'neg' : ''}" title="Día ${x.day}"><i style="height:${Math.max(4, Math.round(Math.abs(x.profit) / max * 100))}%"></i><span>${x.day}</span></div>`).join('')}</div>` : '<p class="ag-empty">Cuando cierres tu primer día verás aquí cómo te va.</p>';
+  const next = EXPANSIONS.find((e) => !ownsExpansion(S, e.id));
+  const goal = next ? `<div class="bk-goal"><b>Ahorro para «${esc(next.name)}»</b><div class="bk-prog"><i style="width:${Math.min(100, Math.round(S.money / next.price * 100))}%"></i></div><small>${money(S.money)} de ${money(next.price)}${S.level < next.level ? ` · se desbloquea en el nivel ${next.level}` : S.money >= next.price ? ' · ¡ya puedes comprarla!' : ` · te faltan ${money(next.price - S.money)}`}</small></div>` : '<div class="bk-goal"><b>Has comprado todas las ampliaciones</b></div>';
+  const rows = [...h].reverse().slice(0, 5).map((x) => `<tr><td>Día ${x.day}</td><td>${x.sales} ventas</td><td class="${x.profit < 0 ? 'neg' : ''}">${x.profit >= 0 ? '+' : ''}${money2(x.profit)}</td></tr>`).join('');
+  const t = S.today;
+  return gen('banco', 'Banco', `<div class="bk-bal"><small>Saldo</small><b>${money2(S.money)}</b></div>
+    ${t ? `<div class="bk-today"><div><b>${t.sales}</b><small>ventas hoy</small></div><div><b>${money(t.revenue + (t.tips ?? 0))}</b><small>ingresado</small></div><div><b>${money(rentFor(S))}</b><small>alquiler diario</small></div></div>` : ''}
+    ${goal}<h4 class="bk-h">Beneficio por día</h4>${bars}${rows ? `<table class="bk-tab">${rows}</table>` : ''}
+    <p class="ag-empty">El IVA de los libros (4 %) y el alquiler se descuentan al cerrar cada día.</p>`);
+}
+
+function appResenas() {
+  const rt = S.ratings ?? {};
+  const list = Object.entries(rt).filter(([id]) => BOOK[id]).map(([id, r]) => ({ id, n: r.n, avg: r.sum / r.n })).sort((a, b) => b.avg - a.avg || b.n - a.n);
+  const tn = list.reduce((a, x) => a + x.n, 0), ta = tn ? list.reduce((a, x) => a + x.avg * x.n, 0) / tn : 0;
+  const rev = (S.feed ?? []).filter((p) => p.kind === 'review' && p.bookId).slice(0, 4);
+  const head = tn ? `<div class="rv-head"><b>${ta.toFixed(1).replace('.', ',')}</b>${stars5(ta)}<small>${tn} valoraciones de tus clientes</small></div>` : '';
+  const items = list.map((x) => `<div class="rv-it"><span class="cv">${coverSVG(BOOK[x.id], 34, 51)}</span><div><b>${esc(BOOK[x.id].title)}</b><small>${esc(BOOK[x.id].author)}</small></div><div class="rv-st">${stars5(x.avg)}<small>${x.avg.toFixed(1).replace('.', ',')} · ${x.n}</small></div></div>`).join('');
+  const quotes = rev.length ? `<h4 class="bk-h">Lo que dicen</h4>${rev.map((p) => `<div class="rv-q"><b>${esc(niceName(p.user))}</b> ${stars5(p.stars)}<p>${esc(p.text)}</p></div>`).join('')}` : '';
+  return gen('resenas', 'Reseñas', tn ? `${head}<h4 class="bk-h">Tus libros mejor valorados</h4>${items}${quotes}` : '<div class="signup"><p>Aún no hay valoraciones. Cada venta deja una nota en tus libros: según lo bien que acierte la recomendación, subirá o bajará.</p></div>');
+}
+
+function appCamara() {
+  const album = S.album ?? [];
+  const shop = world.view === 'shop';
+  return gen('camara', 'Cámara', `<div class="cm-view">${album[0]?.shot ? `<img src="${album[0].shot}" alt="">` : '<div class="cm-none">Aún no has hecho fotos</div>'}</div>
+    <div class="cm-bar"><button type="button" class="cm-shutter" data-act="camShot" ${shop ? '' : 'disabled'} aria-label="Hacer foto"></button></div>
+    ${shop ? '' : '<p class="ag-empty">Vuelve a la tienda para hacer una foto.</p>'}
+    ${album.length > 1 ? `<h4 class="bk-h">Álbum</h4><div class="cm-grid">${album.map((p) => `<div><img src="${p.shot}" alt=""><small>Día ${p.day}</small></div>`).join('')}</div>` : ''}`, album.length ? `${album.length} fotos` : '');
+}
+
+const MAP_PLACES = {
+  tienda: { x: 52, y: 58, name: () => S.shopName, emoji: '📖', text: () => `Tu librería. ${S.expansions.length ? `Has ampliado ${S.expansions.length} ${S.expansions.length === 1 ? 'vez' : 'veces'}.` : 'Con ganas de crecer.'} Nivel ${S.level}.` },
+  cafe: { x: 76, y: 52, name: () => 'Café del Sol', emoji: '☕', text: () => 'El local de al lado huele a café recién hecho. Dicen que algún día podríais abrir una puerta entre los dos.' },
+  panaderia: { x: 28, y: 44, name: () => 'Panadería La Espiga', emoji: '🥖', text: () => 'Abren a las seis. Doña Lola siempre pregunta si ha llegado la novela nueva.' },
+  biblio: { x: 40, y: 22, name: () => 'Biblioteca municipal', emoji: '🏛️', text: () => 'La biblioteca del barrio. Competencia amable: casi todos sus socios acaban comprándose los libros que más les gustan.' },
+  papeleria: { x: 78, y: 28, name: () => 'Papelería Clip', emoji: '✏️', text: () => 'Marcapáginas, libretas y bolígrafos. Quizá un día os podáis recomendar mutuamente.' },
+  rodeos: { x: 16, y: 74, name: () => 'Rodeos Express', emoji: '🚚', text: () => (S.orders?.length ? `La base de Samir. Tiene ${S.orders.reduce((t, o) => t + o.qty, 0)} libros tuyos en camino.` : 'La base de Samir. No tiene nada tuyo pendiente.') },
+  parque: { x: 60, y: 82, name: () => 'Parque del Plátano', emoji: '🌳', text: () => (S.weather === 'sol' ? 'Hoy hace sol: hay gente leyendo en los bancos.' : 'Hoy no hay quien lea en los bancos del parque.') },
+};
+function appMapa() {
+  const sel = MAP_PLACES[PH.place] ?? MAP_PLACES.tienda;
+  const pins = Object.entries(MAP_PLACES).map(([id, p]) => `<button type="button" class="mp-pin ${PH.place === id || (!PH.place && id === 'tienda') ? 'on' : ''}" style="left:${p.x}%;top:${p.y}%" data-act="mapPin" data-id="${id}" aria-label="${esc(p.name())}">${p.emoji}</button>`).join('');
+  return gen('mapa', 'Mapas', `<div class="mp-map"><i class="r1"></i><i class="r2"></i><i class="r3"></i>${pins}</div><div class="mp-card"><b>${esc(sel.name())}</b><p>${esc(sel.text())}</p></div>`);
+}
+
+function appNotas() {
+  return gen('notas', 'Notas', `<textarea class="nt-area" data-notes placeholder="Apunta aquí lo que no quieras olvidar: libros que pedir, ideas para el escaparate…" maxlength="2000">${esc(S.notes ?? '')}</textarea>`, 'Se guarda solo');
 }
 
 /* ---------- Resumen del día ---------- */
@@ -1946,12 +2040,29 @@ const act = {
     renderPanel();
   },
   openApp: ({ app }) => {
-    const lv = app === 'plumas' ? NETWORKS.pluma.level : app === 'tienda' ? WEB_LEVEL : NETWORKS.foto.level;
+    const lv = app === 'plumas' ? NETWORKS.pluma.level : app === 'tienda' ? WEB_LEVEL : app === 'bookgram' ? NETWORKS.foto.level : 0;
     if (S.level < lv) { toast(`Se desbloquea en el nivel ${lv}.`); return; }
     PH.app = app; PH.tab = 'inicio'; PH.picking = false; renderPhone();
   },
   openTienda: () => { panelOpen = false; renderPanel(); openPhone(); PH.app = 'tienda'; renderPhone(); },
   noApp: () => toast('Sin novedades por ahora.'),
+  msgReply: ({ id, opt }) => {
+    const m = replyMessage(S, id, opt);
+    if (!m) return;
+    persist(); renderTop(); renderPhone();
+    toast(m.reply ? `${m.name}: «${m.reply}»` : 'Respondido.');
+  },
+  camShot: () => {
+    if (world.view !== 'shop') { toast('Vuelve a la tienda para hacer la foto.'); return; }
+    const shot = world.snapshot(480, 320);
+    S.album ??= [];
+    S.album.unshift({ shot, day: S.day });
+    S.album = S.album.slice(0, 8);
+    persist();
+    $('#phScreen').insertAdjacentHTML('beforeend', '<div class="flash"></div>');
+    setTimeout(renderPhone, 380);
+  },
+  mapPin: ({ id }) => { PH.place = id; renderPhone(); },
   webAccept: ({ id }) => { webAccept(S, id); persist(); renderTop(); renderPhone(); },
   webReject: ({ id }) => { webReject(S, id); persist(); renderTop(); renderPhone(); },
   webPack: async ({ id }) => {
@@ -2146,6 +2257,7 @@ document.addEventListener('input', (e) => {
     const sm = e.target.closest('.mn-row')?.querySelector('small'); if (sm) sm.textContent = `${e.target.value}\u00a0%`;
     return;
   }
+  if (e.target.dataset?.notes != null) { S.notes = e.target.value; clearTimeout(window.__notesT); window.__notesT = setTimeout(persist, 400); return; }
   if (e.target.id === 'shopname') {
     S.shopName = e.target.value || 'Mi librería';
     persist();
@@ -2188,5 +2300,5 @@ window.Loading?.set(0.9);
 showMenu();
 window.Loading?.hide();
 if (S.phase === 'serving') { S.phase = 'morning'; S.current = null; S.served = 0; persist(); }
-window.__lib = { get S() { return S; }, askEdition, act, world, walkHeroTo, maybeDelivery, showLevelUps, renderPanel, syncWorld };
+window.__lib = { get S() { return S; }, askEdition, act, world, walkHeroTo, maybeDelivery, showLevelUps, renderPanel, syncWorld, openPhone, renderPhone, PH };
 void T; void cellsOf; void ROT_Y;

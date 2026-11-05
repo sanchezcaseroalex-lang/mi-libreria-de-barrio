@@ -108,3 +108,9 @@ textarea.input { resize: none; font-family: var(--hand); font-size: 20px; line-h
 
 .toast { bottom: calc(var(--bar-h) + 70px + env(safe-area-inset-bottom)); z-index: 60; }
 #layer { z-index: 40; }
+
+/* Almacén: cada libro en dos líneas, con sus botones debajo (antes se desbordaban a la izquierda) */
+.stk { align-items: flex-start; }
+.stk .cv { flex: none; }
+.stk .stk-act { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.stk .stk-act .btn.small { min-height: 30px; padding: 3px 10px; font-size: 12.5px; flex: none; width: auto; }

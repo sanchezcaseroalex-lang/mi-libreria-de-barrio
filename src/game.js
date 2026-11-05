@@ -1,6 +1,6 @@
 import { addPts, initPass, TIERS, tierOf, EDITIONS, applyEditions } from './pass.js';
 import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale, sectionOf } from './books.js';
-import { newCustomer, newUnfillable, pickChar, bookWeights, thanksLine, nopeLine, pickupCustomer, parcelCustomer } from './cast.js';
+import { newCustomer, newUnfillable, pickChar, bookWeights, thanksLine, nopeLine, pickupCustomer, parcelCustomer, CAST, CAST_BY_ID } from './cast.js';
 import { FURN, placed, placementError, cellsOf, dims, EXPANSIONS, setBounds } from './layout.js';
 
 export const ROW_CAP = 8;
@@ -348,6 +348,7 @@ export function startDay(s) {
     return o.status !== 'entregado' && o.status !== 'rechazado';
   });
   genWebOrders(s);
+  genMessages(s);
   s.idx = 0;
   s.served = 0;
   s.current = null;
@@ -355,6 +356,61 @@ export function startDay(s) {
   s.phase = 'morning';
   s.today = { sales: 0, revenue: 0, tips: 0, xp: 0, left: 0, level0: s.level, money0: s.money };
 }
+
+/* ---------- Mensajes de clientes (app del teléfono) ---------- */
+
+const MSG_KEEP = 24;
+const shuffleArr = (a) => [...a].sort(() => Math.random() - 0.5);
+export function genMessages(s) {
+  s.msgs ??= [];
+  if (s.day < 2) return;
+  const n = (Math.random() < 0.75 ? 1 : 2) + (s.level >= 4 && Math.random() < 0.5 ? 1 : 0);
+  const chars = CAST.filter((c) => !c.story), avail = availableBooks(s);
+  for (let i = 0; i < n; i++) {
+    const ch = pick(chars), kind = pick(['reserva', 'reserva', 'gracias', 'recomienda', 'aviso']);
+    const m = { id: uid(), day: s.day, charId: ch.id, name: ch.name, kind, read: false, done: false, options: [] };
+    if (kind === 'reserva') {
+      const b = pick(avail); m.bookId = b.id;
+      m.text = pick([`Hola, ¿me puedes guardar «${b.title}»? Paso mañana a recogerlo.`, `Buenas, ¿podrías reservarme «${b.title}»? Mañana me acerco.`, `¡Hola! Quiero «${b.title}». ¿Me lo apartas para mañana?`]);
+      m.options = [{ id: 'si', label: 'Claro, te lo guardo' }, { id: 'no', label: 'Lo siento, no puedo' }];
+    } else if (kind === 'gracias') {
+      const sold = Object.keys(s.soldBy ?? {}).filter((id) => BOOK[id]), b = BOOK[pick(sold.length ? sold : avail.map((x) => x.id))];
+      m.bookId = b.id;
+      m.text = pick([`¡Hola! Me llevé «${b.title}» y me ha encantado. ¡Gracias por la recomendación!`, `Solo quería decirte que «${b.title}» ha sido una joya. ¡Qué buen ojo!`]);
+      m.options = [{ id: 'ok', label: '¡Me alegra mucho!' }];
+    } else if (kind === 'recomienda') {
+      const b = pick(avail), others = shuffleArr(avail.filter((x) => x.id !== b.id && x.genre !== b.genre)).slice(0, 2);
+      if (others.length < 2 || b.tags.length < 2) continue;
+      m.bookId = b.id;
+      m.text = pick([`Hola, ando buscando algo con ${TAGS[b.tags[0]]}. ¿Qué me recomiendas?`, `Buenas. Me apetece una historia con ${TAGS[b.tags[0]]} y ${TAGS[b.tags[1]]}. ¿Cuál me aconsejas?`]);
+      m.options = shuffleArr([b, ...others]).map((x) => ({ id: 'b:' + x.id, label: x.title }));
+    } else {
+      m.text = pick(['Mañana paso a cotillear las novedades. ¡Guárdame un hueco en el mostrador!', 'Solo quería decirte que me encanta tu librería. ¡Hasta pronto!', '¿Qué tal el día? Yo voy a pasarme esta semana a verte.']);
+      m.done = true;
+    }
+    s.msgs.unshift(m);
+  }
+  s.msgs = s.msgs.slice(0, MSG_KEEP);
+}
+
+// El jugador contesta un mensaje. Devuelve el mensaje con su respuesta.
+export function replyMessage(s, id, opt) {
+  const m = (s.msgs ?? []).find((x) => x.id === id);
+  if (!m || m.done) return null;
+  m.done = true; m.read = true;
+  m.chosen = m.options.find((o) => o.id === opt)?.label ?? '';
+  const ch = CAST_BY_ID[m.charId];
+  const reserve = () => addEncargo(s, { charId: m.charId, name: m.name, person: ch.look, target: m.bookId });
+  if (m.kind === 'reserva') {
+    if (opt === 'si') { reserve(); m.reply = '¡Genial! Mañana paso a por él.'; } else m.reply = 'Vaya… otro día entonces. ¡Gracias!';
+  } else if (m.kind === 'gracias') {
+    s.rep += 1; s.followers += 1; m.reply = '¡Volveré pronto! Y se lo cuento a mis amigas.';
+  } else if (m.kind === 'recomienda') {
+    if (opt === 'b:' + m.bookId) { reserve(); s.rep += 1; m.reply = '¡Justo lo que buscaba! Mañana paso a por él.'; } else m.reply = 'Mmm, no sé… creo que no es lo mío. ¡Gracias igualmente!';
+  }
+  return m;
+}
+export const unreadCount = (s) => (s.msgs ?? []).filter((m) => !m.read).length;
 
 /* ---------- Pedidos online ---------- */
 
@@ -512,6 +568,7 @@ const REVIEWS = {
 };
 
 function maybeReview(s, book, stars) {
+  if (book) { s.ratings ??= {}; const q = (s.ratings[book.id] ??= { n: 0, sum: 0 }); q.n++; q.sum += stars; }   // nota de cada libro (app Reseñas)
   if (stars <= 2) { const loss = stars === 1 ? 2 : 1; s.rep = Math.max(0, s.rep - loss); s.followers = Math.max(0, s.followers - (stars === 1 ? 2 : 1)); }
   if (!s.social.pluma.on) return null;
   const chance = { 5: 0.6, 4: 0.4, 3: 0.3, 2: 0.55, 1: 0.8 }[stars] ?? 0.3;
