@@ -1700,7 +1700,7 @@ const phoneTime = () => {
   const m = 9 * 60 + Math.round(((S.phase === 'serving' ? S.idx : 0) / (S.queue.length || 1)) * 480);
   return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 };
-const statusBar = (light) => `<div class="ph-status" style="color:${light ? '#fff' : '#111'}"><span>${phoneTime()}</span><span>5G<i></i></span></div>`;
+const statusBar = (light) => `<div class="ph-status" style="color:${light ? '#fff' : '#111'}"><span>${PH.app ? '<button type="button" class="ph-back" data-act="phoneHome" aria-label="Volver a las aplicaciones">‹ Atrás</button>' : phoneTime()}</span><span>5G<i></i></span></div>`;
 const niceName = (u) => { const t = String(u).replace(/^@/, '').replace(/[_\d]+/g, ' ').trim(); return t.charAt(0).toUpperCase() + t.slice(1); };
 
 function openPhone() {

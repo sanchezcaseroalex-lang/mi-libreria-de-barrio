@@ -469,3 +469,7 @@ body.intro #openShopBtn, body.inmenu #openShopBtn, body.editing #openShopBtn { d
 /* Notas */
 .pl.notas { background: #fff7c9; } .pl.notas .gn-top { background: #ffe680; border-color: #e6cd5c; }
 .nt-area { width: 100%; height: 100%; min-height: 320px; padding: 14px 16px; border: 0; outline: 0; resize: none; background: repeating-linear-gradient(transparent 0 25px, rgba(150, 120, 40, .25) 25px 26px); font: 500 16px/26px Caveat, var(--sans); color: #4a3a10; box-sizing: border-box; }
+
+.ph-back { border: 0; background: rgba(120, 120, 128, .18); color: inherit; font: 700 13px -apple-system, Nunito, sans-serif; padding: 4px 11px 4px 8px; border-radius: 14px; cursor: pointer; margin: -3px 0 -3px -10px; }
+.ph-back:active { background: rgba(120, 120, 128, .35); }
+.pl.camara .ph-status { color: #fff !important; }
