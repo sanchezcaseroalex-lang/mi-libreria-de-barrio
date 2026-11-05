@@ -262,8 +262,6 @@ button { font: inherit; color: inherit; }
 .drophint.bad { background: rgba(230, 90, 70, .35); border-color: #ef7a66; }
 .room.editing .ent[data-uid] { cursor: grab; }
 .room.editing .ent.sel svg.spr { filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 4px #ffd78a) drop-shadow(0 0 2px #ffd78a); }
-.ghost { position: fixed; z-index: 2000; pointer-events: none; opacity: .92; filter: drop-shadow(0 8px 6px rgba(0,0,0,.35)); }
-.ghost svg { display: block; overflow: visible; }
 .tray { display: flex; gap: 10px; overflow-x: auto; padding: 6px 2px 10px; margin-top: 4px; touch-action: pan-x; }
 .tile { flex: none; width: 92px; padding: 8px 6px 6px; border: 2px dashed var(--line); border-radius: 14px; background: var(--paper); text-align: center; touch-action: none; user-select: none; cursor: grab; }
 .tile-spr { height: 74px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }

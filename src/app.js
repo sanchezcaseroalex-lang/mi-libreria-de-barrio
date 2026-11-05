@@ -22,7 +22,7 @@ import { showBook3D } from './viewer.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '2026-11-05 · sagas y conversaciones';
+const BUILD = 'v16 · botones del almacén arreglados';
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -1571,7 +1571,7 @@ function placeSheet(id) {
   const n = S.storage[id] ?? 0;
   const dests = containers(S).map((c) => {
     const label = c.kind === 'row' ? `Estantería ${c.n} · ${SEC[c.section].short}` : 'Mesa de novedades';
-    const note = c.kind === 'row' ? `${c.arr.length}/${c.cap}${c.section === sectionOf(b) ? ' · su sección' : ''}` : `${c.arr.length}/${c.cap} · +10 % de precio`;
+    const note = c.kind === 'row' ? `${c.arr.length}/${c.cap}${c.section === sectionOf(b) ? ' · su sección' : ''}` : `${c.arr.length}/${c.cap}`;
     return `<button type="button" class="dest" data-act="placeAt" data-id="${id}" data-cid="${c.id}" ${c.arr.length >= c.cap ? 'disabled' : ''}><i style="background:${c.kind === 'row' ? SEC[c.section].color : '#e0a93b'}"></i><span>${label}</span><small>${note}</small></button>`;
   });
   openSheet(`${sheetHead(esc(b.title))}<p class="muted">Se expone un ejemplar y el resto se queda en el almacén (${n} ahora).</p><div class="dests">${dests.join('') || '<p class="empty">No tienes estanterías colocadas. Pulsa Decorar.</p>'}</div>`);
@@ -1584,7 +1584,7 @@ function topHTML() {
   if (!top.length) return '';
   const onTable = new Map();
   placed(S.furniture).filter((f) => f.type === 'table').flatMap((f) => f.books).forEach((id) => onTable.set(id, (onTable.get(id) ?? 0) + 1));
-  return `<div class="story-card"><p class="kick">Más vendidos</p>${top.map(([id, n], i) => `<div class="up"><div><b>${i + 1}. ${esc(BOOK[id].title)}</b><small>${n} ${n === 1 ? 'venta' : 'ventas'}</small></div>${onTable.has(id) ? `<span class="tag ok">En la mesa ×${onTable.get(id)}</span>` : ''}<button type="button" class="btn small primary" data-act="toTable" data-id="${id}">${onTable.has(id) ? '+1' : 'A la mesa'}</button></div>`).join('')}<p class="muted small">La mesa de novedades y más vendidos (hasta 24 libros, con varios del mismo título apilados) vende los libros un 10 % más caros.</p></div>`;
+  return `<div class="story-card"><p class="kick">Más vendidos</p>${top.map(([id, n], i) => `<div class="up"><div><b>${i + 1}. ${esc(BOOK[id].title)}</b><small>${n} ${n === 1 ? 'venta' : 'ventas'}</small></div>${onTable.has(id) ? `<span class="tag ok">En la mesa ×${onTable.get(id)}</span>` : ''}<button type="button" class="btn small primary" data-act="toTable" data-id="${id}">${onTable.has(id) ? '+1' : 'A la mesa'}</button></div>`).join('')}<p class="muted small">La mesa de novedades y más vendidos luce hasta 24 libros, con varios del mismo título apilados. El precio no cambia: un libro vale lo mismo esté donde esté.</p></div>`;
 }
 
 function panelStock() {

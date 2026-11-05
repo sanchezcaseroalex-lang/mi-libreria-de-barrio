@@ -37,7 +37,7 @@ const lv = (arr) => (n) => arr[n] ?? 99;
 export const FURN = {
   counter: { name: 'Mostrador', w: 3, h: 1, fixed: true, cozy: 0, desc: 'Donde atiendes a los clientes.' },
   shelf: { name: 'Estantería', w: 2, h: 1, price: (n) => 180 + 40 * n, level: lv([1, 3, 5, 7, 9]), max: 5, cozy: 1, desc: 'Cabe en 3 baldas, una por género.' },
-  table: { name: 'Mesa de novedades', w: 2, h: 2, norot: true, price: (n) => 150 + 60 * n, level: lv([3, 6]), max: 2, cozy: 1, desc: 'Redonda, con novedades: se venden un 10 % más caros.' },
+  table: { name: 'Mesa de novedades', w: 2, h: 2, norot: true, price: (n) => 150 + 60 * n, level: lv([3, 6]), max: 2, cozy: 1, desc: 'Redonda, para exponer novedades y más vendidos: hasta 24 libros, con repetidos apilados.' },
   plant: { name: 'Planta', w: 1, h: 1, norot: true, price: () => 35, level: lv([2, 2, 3, 4, 5, 6]), max: 6, cozy: 1, desc: 'Lengua de suegra: alta, fina y verde.' },
   cat: { name: 'Cama del gato', w: 1, h: 1, norot: true, price: () => 90, level: lv([2]), max: 1, cozy: 2, desc: 'Tinta duerme aquí y los clientes la adoran.' },
   rug: { name: 'Alfombra', w: 2, h: 2, floor: true, norot: true, price: (n) => 60 + 30 * n, level: lv([3, 5]), max: 2, cozy: 1, desc: 'Se pisa: puedes poner muebles encima.' },

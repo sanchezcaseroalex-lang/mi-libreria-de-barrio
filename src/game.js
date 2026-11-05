@@ -688,7 +688,7 @@ export function offer(s, bookId, opts = {}) {
   const place = takeCopy(s, bookId);
   if (!place) return { error: 'Ya no te quedan ejemplares de ese libro.' };
   const trending = s.trend.some((t) => t.id === bookId && t.until >= s.day);
-  const price = Math.round(book.price * fmul * (special ? book.ed.mult : 1) * (place.onTable ? 1.1 : 1) * (trending ? 1.2 : 1));
+  const price = Math.round(book.price * fmul * (special ? book.ed.mult : 1) * (trending ? 1.2 : 1));
   addPts(s, 10);
   s.soldBy ??= {}; s.soldBy[bookId] = (s.soldBy[bookId] ?? 0) + 1;
   const tip = score >= 2 ? Math.round(price * 0.1 * Math.min(1, cozy(s) / 8) * (countOf(s, 'coffee') && placed(s.furniture).some((f) => f.type === 'coffee') ? 1.5 : 1) * (c.collector && special ? 2 : 1) * 10) / 10 : 0;
@@ -723,7 +723,7 @@ export function sellBundle(s) {
   let price = 0, post = null;
   for (const id of ids) {
     const bk = BOOK[id], place = takeCopy(s, id);
-    price += Math.round(bk.price * (place?.onTable ? 1.1 : 1));
+    price += bk.price;
     s.soldBy ??= {}; s.soldBy[id] = (s.soldBy[id] ?? 0) + 1;
     s.today.sales++; s.stats ??= { sold: 0, regulars: {} }; s.stats.sold++;
     addPts(s, 10); gainXp(s, 13);
