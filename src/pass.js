@@ -57,9 +57,9 @@ const TIERS_1 = [
 const TIERS_2 = [
   { free: MONEY(50), prem: MONEY(120) },
   { free: XP(30), prem: F('plant', 'blanca') },
-  { free: MONEY(60), prem: ST('phone') },
+  { free: ST('tripod'), prem: ST('phone') },
   { free: XP(40), prem: XP(80) },
-  { free: ST('tripod'), prem: F('armchair', 'azul') },
+  { free: MONEY(60), prem: F('armchair', 'azul') },
   { free: MONEY(70), prem: ED('dunas') },
   { free: XP(50), prem: MONEY(200) },
   { free: MONEY(80), prem: ST('rings') },

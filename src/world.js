@@ -338,7 +338,8 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       const root = buildFurniture(f, lightCtx);
       root.position.set(f.x + d.w / 2, 0, f.y + d.h / 2); root.rotation.y = ROT_Y[f.rot ?? 0];
       root.userData.uid = f.uid; root.userData.type = f.type;
-      if (!FURN[f.type].floor) { const ao = contactShadow(d.w + .35, d.h + .35, f.type === 'wall' || f.type === 'wallh' || f.type === 'wallc' ? .3 : .5); ao.rotation.z = -(ROT_Y[f.rot ?? 0] ?? 0); root.add(ao); }
+      // sombra de contacto muy suave y ajustada, solo en muebles que están centrados en su casilla (en plantas, estanterías y paredes quedaba como una mancha gris)
+      if (['sofa', 'armchair', 'table', 'counter', 'lamp', 'side', 'cat', 'coffee', 'ereader'].includes(f.type)) { const df = FURN[f.type]; root.add(contactShadow(df.w + .12, df.h + .12, f.type === 'counter' ? .2 : .26)); }
       root.traverse((o) => { if (o.isMesh) o.userData.furnUid = f.uid; });
       if (root.userData.anim) anims.push(root.userData.anim);
       furnRoot.add(root);
@@ -361,7 +362,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
     const root = room === 'store' ? storeRoot : room === 'town' ? (townRoot ?? shopRoot) : shopRoot;
     root.add(p); p.position.set(cell[0] + .5, 0, cell[1] + .5); p.rotation.y = rot; p.userData.look = look;
     if (withBubble) { const el = document.createElement('div'); el.className = 'bubble3d'; el.hidden = true; bubblesEl.append(el); p.userData.bubble = el; }
-    { const ao = contactShadow(.7, .7, .45, true); ao.position.y = .015; p.add(ao); p.userData.aoMesh = ao; }
+    { const ao = contactShadow(.6, .6, .26, true); ao.position.y = .015; p.add(ao); p.userData.aoMesh = ao; }
     p.traverse((o) => { if (o.isMesh) o.userData.personRef = p; });
     people.add(p); return p;
   }

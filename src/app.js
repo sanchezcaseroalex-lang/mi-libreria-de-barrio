@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.28.1';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.29.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -829,7 +829,8 @@ async function maybeStory() {
     step(0);
   });
   closeDialog();
-  toast(`Capítulo ${who === 'anselmo' ? S.story.chapter : ch.index}: «${ch.title}» completado · +${ch.reward} €`);
+  toast(`Capítulo ${who === 'anselmo' ? S.story.chapter : ch.index}: «${ch.title}» completado · +${ch.reward} €${ch.studio ? ' · Trípode instalado en el almacén' : ''}`);
+  if (ch.studio) syncWorld();
   storyBusy = false; busy = false;
   renderPanel();
   setTimeout(maybeStory, 600);
