@@ -1,7 +1,7 @@
 import { addPts, initPass, TIERS, tierOf, EDITIONS, applyEditions } from './pass.js';
 import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale, sectionOf, SAGAS } from './books.js';
 import { newCustomer, newUnfillable, pickChar, bookWeights, thanksLine, nopeLine, pickupCustomer, parcelCustomer, CAST, CAST_BY_ID } from './cast.js';
-import { FURN, placed, placementError, cellsOf, dims, EXPANSIONS, setBounds } from './layout.js';
+import { FURN, placed, placementError, cellsOf, dims, EXPANSIONS, setBounds, seatSpots } from './layout.js';
 
 export const ROW_CAP = 8;
 export const TABLE_CAP = 24;   // 5 de pie en el centro y el resto tumbados alrededor (los repetidos se apilan)
@@ -378,7 +378,7 @@ export function startDay(s) {
   s.idx = 0;
   s.served = 0;
   s.current = null;
-  s.nook = null;
+  s.nook = null; s.nooks = [];
   s.phase = 'morning';
   s.today = { sales: 0, revenue: 0, tips: 0, xp: 0, left: 0, level0: s.level, money0: s.money };
 }
@@ -794,9 +794,10 @@ export function offer(s, bookId, opts = {}) {
   gainXp(s, 10 + (score === 3 ? 8 : score === 2 ? 3 : 0));
   const stars = score === 3 ? 5 : score === 2 ? 4 : 3;
   const post = maybeReview(s, book, stars);
-  const reads = placed(s.furniture).some((f) => f.type === 'armchair' || f.type === 'sofa') && score >= 2 && Math.random() < 0.45;
+  s.nooks ??= [];
+  const reads = seatSpots(s.furniture).length > s.nooks.length && score >= 2 && Math.random() < 0.45;
   if (reads) {
-    s.nook = { person: c.person };
+    s.nooks.push({ person: c.person });
     s.rep += 1;
   }
   if (c.pickup) { s.encargos = (s.encargos ?? []).filter((e) => e.uid !== c.encargoUid); s.rep += 1; s.followers += 1; }

@@ -47,12 +47,14 @@ export const FURN = {
   side: { name: 'Mesita', w: 1, h: 1, norot: true, price: () => 45, level: lv([4, 5, 6]), max: 3, cozy: 0.5, desc: 'Con su taza de té.' },
   sofa: { name: 'Sofá de lectura', w: 2, h: 1, price: (n) => 260 + 60 * n, level: lv([6, 8]), max: 2, cozy: 2, desc: 'Dos clientes pueden leer a la vez.' },
   escaparate: { name: 'Escaparate', w: 3, h: 1, price: () => 280, level: lv([4]), max: 1, cozy: 1.5, desc: 'Coloca a tu gusto libros, complementos y figuritas: 12 huecos libres. Atrae más clientes.' },
-  wall: { name: 'Pared divisoria', w: 1, h: 1, price: () => 45, level: lv([5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]), max: 16, cozy: 0, desc: 'Un tramo de pared para separar la zona de lectura. Se gira para ir en una dirección u otra.' },
+  wall: { name: 'Pared (tramo entero)', w: 1, h: 1, price: () => 40, level: lv(Array(30).fill(5)), max: 30, cozy: 0, desc: 'Un tramo de pared. Coloca varios seguidos y gíralos para dibujar tu zona.' },
+  wallh: { name: 'Media pared', w: 1, h: 1, price: () => 25, level: lv(Array(20).fill(5)), max: 20, cozy: 0, desc: 'Un tramo corto de pared, de medio ancho: para remates y recovecos.' },
+  wallc: { name: 'Esquina de pared', w: 1, h: 1, price: () => 55, level: lv(Array(12).fill(5)), max: 12, cozy: 0, desc: 'Una pared en L para girar la esquina de tu zona.' },
   doorway: { name: 'Puerta de zona', w: 1, h: 1, walk: true, price: (n) => 120 + 40 * n, level: lv([5, 6]), max: 2, cozy: 0.5, desc: 'Un hueco con marco y un cartel de «Zona de lectura» para pasar de una zona a otra.' },
   ereader: { name: 'Expositor de e-readers', w: 1, h: 1, price: () => 220, level: lv([7]), max: 1, cozy: 0.5, desc: 'Con 4 lectores electrónicos de varias marcas: se venden caros y dan mucho margen.' },
   coffee: { name: 'Rincón de café', w: 1, h: 1, price: () => 350, level: lv([9]), max: 1, cozy: 3, desc: 'Más propinas y más calidez.' },
 };
-export const FURN_ORDER = ['shelf', 'table', 'plant', 'cat', 'rug', 'armchair', 'lamp', 'side', 'sofa', 'escaparate', 'ereader', 'wall', 'doorway', 'coffee'];
+export const FURN_ORDER = ['shelf', 'table', 'plant', 'cat', 'rug', 'armchair', 'lamp', 'side', 'sofa', 'escaparate', 'ereader', 'wall', 'wallh', 'wallc', 'doorway', 'coffee'];
 
 // Tamaño en casillas según el giro
 export const dims = (type, rot = 0) => {
@@ -68,6 +70,18 @@ export const cellsOf = (f, x = f.x, y = f.y, rot = f.rot ?? 0) => {
 };
 
 export const placed = (list) => list.filter((f) => f.x != null);
+
+// Plazas para sentarse a leer: cada sillón tiene 1 y cada sofá grande 2 (dx, dz respecto al centro del mueble, en el mundo)
+export const seatSpotsFn = (list) => seatSpots(list);
+export function seatSpots(list) {
+  const out = [];
+  for (const f of placed(list)) {
+    if (f.type !== 'armchair' && f.type !== 'sofa') continue;
+    const r = f.rot ?? 0, offs = f.type === 'sofa' ? [-.45, .45] : [0];
+    for (const off of offs) out.push({ f, dx: r === 0 ? off : r === 2 ? -off : 0, dz: r === 1 ? off : r === 3 ? -off : 0 });
+  }
+  return out;
+}
 
 // Casillas por las que no se puede caminar
 export function blockedSet(list, ignoreUid = null) {

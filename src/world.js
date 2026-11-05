@@ -7,13 +7,13 @@ import { buildFurniture, itemMesh } from './furniture3d.js';
 import { buildTown } from './town3d.js';
 import { makeVan } from './van3d.js';
 import { makePerson, animatePerson, sitPerson, HERO_LOOK } from './people3d.js';
-import { B, ENTRY, DOOR_ROW, FURN, dims, placed, seatCell, doorCell, placementError } from './layout.js';
+import { B, ENTRY, DOOR_ROW, FURN, dims, placed, seatCell, seatSpots, doorCell, placementError } from './layout.js';
 import { BOOK, BOOKS, GENRES } from './books.js';
 
 export const ROT_Y = [0, -Math.PI / 2, Math.PI, Math.PI / 2];
 const WALL_H = 2.7;
 const SHELF_X = [1.2, 3.3, 5.4];
-export const STORE_INFO = { w: 7, d: 6, door: [6, 3], shelfFront: [[1, 1], [3, 1], [5, 1]], boxSlots: [[2.0, 3.9], [3.5, 3.9], [5.0, 3.9], [2.0, 5.1], [3.5, 5.1], [5.0, 5.1], [6.2, 5.2], [1.5, 2.4]] };
+export const STORE_INFO = { w: 7, d: 6, door: [6, 3], shelfFront: [[1, 1], [3, 1], [5, 1]], boxSlots: [[2.5, 3.9], [3.3, 3.9], [4.1, 3.9], [4.9, 3.9], [2.5, 4.7], [3.3, 4.7], [4.1, 4.7], [4.9, 4.7]] };
 const STORE = { w: 7, d: 6, off: new THREE.Vector3(60, 0, 0) };
 
 /* ---------- Carteles ---------- */
@@ -99,7 +99,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
   let view = 'shop';
   let editOn = false;
   let selUid = null, selPoster = null;
-  let shell = null, furnRoot = null, nookP = null, stockRoot = null, boxRoot = null, gridLines = null, selMark = null;
+  let shell = null, furnRoot = null, nookPs = [], stockRoot = null, boxRoot = null, gridLines = null, selMark = null;
   const keys = { shell: '', furn: '', nook: '', store: '' };
   const walls = [];                  // paredes de la vista actual
   let shopWalls = [];
@@ -447,17 +447,16 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
 
   // Dibujar las personas de la nook (lectora sentada)
   function syncNook() {
-    if (nookP) { removePerson(nookP); nookP = null; }
-    if (!S.nook) return;
-    const chair = placed(S.furniture).find((f) => (f.type === 'armchair' || f.type === 'sofa') && seatCell(f, S.furniture));
-    if (!chair) return;
-    const d = dims(chair.type, chair.rot ?? 0);
-    const p = spawn(S.nook.person, [0, 0], ROT_Y[chair.rot ?? 0], false);
-    const off = chair.type === 'sofa' ? .45 : 0, r = chair.rot ?? 0;
-    const ox = r === 0 ? off : r === 2 ? -off : 0, oz = r === 1 ? off : r === 3 ? -off : 0;
-    p.position.set(chair.x + d.w / 2 + ox, .08, chair.y + d.h / 2 + oz);
-    p.userData.faceT = null; sitPerson(p, true); nookP = p;
-    const book = displayBook(BOOK[S.nook.bookId ?? 'alas'] ?? BOOKS[0], .2, .28, .04); book.rotation.x = -.5; book.position.set(0, .6, .22); p.userData.hold.add(book); p.userData.hold.position.set(0, .15, .1);
+    nookPs.forEach((p) => removePerson(p)); nookPs = [];
+    const spots = seatSpots(S.furniture), list = S.nooks ?? [];
+    list.forEach((n, k) => {
+      const sp = spots[k]; if (!sp) return;
+      const chair = sp.f, d = dims(chair.type, chair.rot ?? 0);
+      const p = spawn(n.person, [0, 0], ROT_Y[chair.rot ?? 0], false);
+      p.position.set(chair.x + d.w / 2 + sp.dx, .08, chair.y + d.h / 2 + sp.dz);
+      p.userData.faceT = null; sitPerson(p, true); nookPs.push(p);
+      const book = displayBook(BOOK[n.bookId ?? 'alas'] ?? BOOKS[0], .2, .28, .04); book.rotation.x = -.5; book.position.set(0, .6, .22); p.userData.hold.add(book); p.userData.hold.position.set(0, .15, .1);
+    });
   }
 
   /* ---------- Almacén (otra estancia) ---------- */
@@ -550,9 +549,11 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       for (let k = 0; k < n; k++) { const o = lyingBook(BOOK[id], .24, .34, .045); o.position.set(x, y + k * .046, z + .02); o.rotation.y = Math.PI + (k % 2 ? .08 : -.05); stockRoot.add(o); }
     });
     storeDecor();   // cajas de adorno apiladas, unas cerradas y otras abiertas
-    S.boxes.slice(0, BOX_SLOTS.length).forEach((b, i) => {
-      const [x, z] = BOX_SLOTS[i]; const g = cardboard(`${b.items.reduce((a, it) => a + it.qty, 0)} libros`);
-      g.position.set(x, 0, z); g.rotation.y = (i % 2 ? .12 : -.1); g.userData.boxId = b.id;
+    S.boxes.slice(0, BOX_SLOTS.length * 3).forEach((b, i) => {
+      // cajas pequeñas: se reparten en una cuadrícula y, si hay muchas, se apilan en alturas (sin solaparse)
+      const slot = i % BOX_SLOTS.length, layer = Math.floor(i / BOX_SLOTS.length), [x, z] = BOX_SLOTS[slot]; const g = cardboard(`${b.items.reduce((a, it) => a + it.qty, 0)} libros`);
+      g.scale.setScalar(.6);
+      g.position.set(x, layer * .34, z); g.rotation.y = ((i * 7) % 5 - 2) * .04; g.userData.boxId = b.id;
       g.traverse((o) => { if (o.isMesh) o.userData.boxId = b.id; });
       boxRoot.add(g);
     });

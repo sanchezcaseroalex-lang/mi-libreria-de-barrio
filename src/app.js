@@ -2,7 +2,7 @@
 import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale, sagaLabel, SECTIONS, sectionOf } from './books.js';
 import { coverSVG, spineSVG } from './art.js';
 import {
-  makePassable, routePoints, frontCells, T, ROWS, FURN, FURN_ORDER, EXPANSIONS, B, ENTRY, DOOR_ROW, setBounds, placed, blockedSet, findPath, serviceCell, seatCell, doorCell, cellsOf, dims,
+  makePassable, routePoints, frontCells, T, ROWS, FURN, FURN_ORDER, EXPANSIONS, seatSpotsFn, B, ENTRY, DOOR_ROW, setBounds, placed, blockedSet, findPath, serviceCell, seatCell, doorCell, cellsOf, dims,
 } from './layout.js';
 import {
   newGame, ITEMS, NETWORKS, XP_LEVELS, availableBooks, cozy, storageCount, shelfFree, shelfSlots, containers, furnById,
@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.22.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.23.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -45,7 +45,7 @@ const buzz = (ms = 30) => { if (P.vibrate && navigator.vibrate) navigator.vibrat
 function prepare(s) {
   setBounds(s.expansions);
   s.settings ??= { hard: false };
-  initStory(s); initPass(s); s.doormat ??= 'Bienvenid@s'; s.encargos ??= []; s.web ??= { orders: [], n: 1 }; s.msgs ??= []; s.goods ??= {}; s.missedGoods ??= {}; s.ratings ??= {}; s.album ??= []; s.notes ??= '';
+  initStory(s); initPass(s); s.doormat ??= 'Bienvenid@s'; s.encargos ??= []; s.web ??= { orders: [], n: 1 }; s.msgs ??= []; s.nooks ??= (s.nook ? [{ person: s.nook.person, bookId: s.nook.bookId }] : []); s.goods ??= {}; s.missedGoods ??= {}; s.ratings ??= {}; s.album ??= []; s.notes ??= '';
   clearBookCaches(applyEditions(s));
   if (s.introSeen == null) s.introSeen = !!s.hero;
   if (s.tut == null && s.hero) s.tut = { i: 999 };
@@ -273,7 +273,8 @@ const STO = STORE_INFO;
 const wipeEl = $('#wipe');
 const entryCell = () => [ENTRY[0][0], ROWS];
 const heroCell = () => [Math.floor(world.hero.position.x), Math.floor(world.hero.position.z)];
-const sitCell = () => placed(S.furniture).find((f) => (f.type === 'armchair' || f.type === 'sofa') && seatCell(f, S.furniture));
+const seatChair = (i) => { const sp = seatSpotsFn(S.furniture)[i]; return sp && seatCell(sp.f, S.furniture) ? sp.f : null; };
+const sitCell = () => seatChair((S.nooks ?? []).length);   // el siguiente asiento libre (sofá grande: 2 plazas; sillón: 1)
 const spd = () => window.__speed ?? 1;
 const sleep = (ms) => wait(ms / spd());
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -467,14 +468,14 @@ async function updateLine() {
 // Un curioso se sienta en un sillón o sofá a leer un rato (se queda sentado hasta cerrar)
 async function goRead(e, tok) {
   const chair = sitCell();
-  if (!chair || S.nook) return false;
+  if (!chair) return false;
   const pass = makePassable(blockedSet(S.furniture));
   const seat = seatCell(chair, S.furniture);
   const pts = routePoints(pass, { x: e.p.position.x, z: e.p.position.z }, seat);
   if (!pts) return false;
   await world.walkRoute(e.p, pts, 2.2, (x, z) => pass(Math.floor(x), Math.floor(z)));
-  if (tok !== dayTok || S.nook) return false;
-  S.nook = { person: e.p.userData.look, bookId: null };
+  if (tok !== dayTok || !sitCell()) return false;
+  (S.nooks ??= []).push({ person: e.p.userData.look, bookId: null });
   world.removePerson(e.p);
   syncWorld();
   return true;
@@ -535,7 +536,7 @@ async function runShopper(e, tok) {
       await e.done;
     } else {
       free();
-      if (e.ambient && tok === dayTok && !S.nook && Math.random() < 0.3 && (await goRead(e, tok))) return;
+      if (e.ambient && tok === dayTok && sitCell() && Math.random() < 0.3 && (await goRead(e, tok))) return;
       if (e.ambient && tok === dayTok && S.level >= 2 && Math.random() < 0.4) await directBuy(e, tok);
       await exitShop(e);
     }
@@ -1445,7 +1446,7 @@ async function finishCustomer(e, r, id) {
   }
   world.say(p, '');
   if (r.review) toastReview(r.review);
-  const chair = sitCell();
+  const chair = r.reads ? seatChair((S.nooks ?? []).length - 1) : sitCell();
   const cell = [Math.floor(p.position.x), Math.floor(p.position.z)];
   // el siguiente de la cola ya puede avanzar mientras este se marcha
   const i = line.indexOf(e); if (i >= 0) line.splice(i, 1);
@@ -1455,7 +1456,7 @@ async function finishCustomer(e, r, id) {
   persist();
   renderTop();
   if (r.reads && chair && id) {
-    S.nook = { ...(S.nook ?? {}), person: p.userData.look, bookId: id };
+    { const nk = (S.nooks ?? [])[(S.nooks ?? []).length - 1]; if (nk) { nk.person = p.userData.look; nk.bookId = id; } }
     const pass = makePassable(blockedSet(S.furniture));
     const pts = routePoints(pass, { x: p.position.x, z: p.position.z }, seatCell(chair, S.furniture));
     if (pts) await world.walkRoute(p, pts, 2.2, (x, z) => pass(Math.floor(x), Math.floor(z)));
@@ -1572,6 +1573,7 @@ function renderEditPanel() {
   if (editTab === 'muebles') {
     const inv = inventory(S);
     body = `
+      <p class="kick sub">En la tienda (toca uno para elegirlo)</p><div class="chips-f">${placed(S.furniture).map((f) => `<button type="button" class="chip-f ${selUid === f.uid ? 'on' : ''}" data-act="selFurn" data-uid="${f.uid}">${icon(f.type, 'tile-ic')}${FURN[f.type].name}</button>`).join('')}</div>
       <p class="hint">${placedSel ? `<b>${FURN[sel.type].name}</b> seleccionado: arrástralo para moverlo.` : 'Arrastra un mueble a la tienda o toca uno ya colocado.'}</p>
       ${placedSel ? `<div class="selbar">${FURN[sel.type].norot ? '' : '<button type="button" class="btn small" data-act="rotate">Girar</button>'}${FURN[sel.type].fixed ? '' : '<button type="button" class="btn small" data-act="storeSel">Guardar</button>'}</div><div class="selbar"><span class="muted small">Mover:</span><button type="button" class="btn small" data-act="nudge" data-dx="-1" data-dy="0" aria-label="Izquierda">←</button><button type="button" class="btn small" data-act="nudge" data-dx="0" data-dy="-1" aria-label="Arriba">↑</button><button type="button" class="btn small" data-act="nudge" data-dx="0" data-dy="1" aria-label="Abajo">↓</button><button type="button" class="btn small" data-act="nudge" data-dx="1" data-dy="0" aria-label="Derecha">→</button></div>` : ''}
       <p class="kick sub">Inventario</p>
@@ -2078,13 +2080,13 @@ function appPlumas() {
 
 function reelHTML(p) {
   const b = BOOK[p.bookId];
-  return `<article class="bp"><div class="hd"><i><b></b></i>${esc(S.shopName)}</div>
+  return `<article class="bp"><div class="hd"><i><b>${heroAvatarImg()}</b></i>${esc(S.shopName)}</div>
     <div class="media reel" style="background:linear-gradient(160deg, ${b.pal[0]}, ${b.pal[1]})"><span class="tag">Reel</span>${coverSVG(b, 110, 165)}<span class="play"></span><span class="views">▶ ${fmtK(p.views)}</span></div>
     <div class="ac">${svgi(G.heart)}${svgi(G.comment)}${svgi(G.send)}</div><div class="lk">${fmtK(p.likes)} Me gusta ${p.viral ? '· ¡viral!' : ''}</div>
     <div class="cp"><b>${esc(S.shopName)}</b>Hoy os recomiendo «${esc(p.title)}».</div><div class="ag">${ago(p.day)} · +${p.gained} seguidores</div></article>`;
 }
 function photoHTML(p) {
-  return `<article class="bp"><div class="hd"><i><b></b></i>${esc(S.shopName)}</div>
+  return `<article class="bp"><div class="hd"><i><b>${heroAvatarImg()}</b></i>${esc(S.shopName)}</div>
     <div class="media">${p.shot ? `<img src="${p.shot}" alt="">` : ''}</div>
     <div class="ac">${svgi(G.heart)}${svgi(G.comment)}${svgi(G.send)}</div><div class="lk">${fmtK(p.likes)} Me gusta</div>
     <div class="cp"><b>${esc(S.shopName)}</b>${esc(p.caption)}</div><div class="ag">${ago(p.day)} · +${p.gained} seguidores</div></article>`;
@@ -2111,7 +2113,7 @@ function appBookgram() {
       <p style="padding:0 14px 10px"><b>${esc(S.shopName)}</b><br>Librería cozy · novelas, té y gato.</p><div class="pgrid">${photos.filter((p) => p.shot).map((p) => `<div><img src="${p.shot}" alt=""></div>`).join('')}</div>`;
   } else {
     const posts = [...photos, ...reels].sort((a, b) => b.day - a.day);
-    body = `<div class="stories"><div class="story"><i><b>${svgi(G.plus)}</b></i>Tu tienda</div>${['Lucía', 'Mateo', 'Carmen', 'Hugo', 'Noa'].map((n) => `<div class="story"><i><b style="background:hsl(${hue(n)} 50% 70%)">${n[0]}</b></i>${n}</div>`).join('')}</div>
+    body = `<div class="stories"><div class="story"><i><b>${heroAvatarImg()}</b></i>Tu tienda</div>${['Lucía', 'Mateo', 'Carmen', 'Hugo', 'Noa'].map((n) => `<div class="story"><i><b style="background:hsl(${hue(n)} 50% 70%)">${n[0]}</b></i>${n}</div>`).join('')}</div>
       ${posts.map((p) => (p.kind === 'video' ? reelHTML(p) : photoHTML(p))).join('') || '<div class="empty-note">Pulsa el botón + para publicar tu primera foto de la librería.</div>'}`;
   }
   const nav = on ? `<div class="app-nav">
@@ -2303,6 +2305,7 @@ const act = {
   decor: () => { closeSheet(); toggleEdit(); },
   editTab: ({ id }) => { editTab = id; renderEditPanel(); },
   rotate: () => { const err = rotateFurniture(S, selUid); if (err) { toast(err); return; } persist(); syncWorld(); renderEditPanel(); },
+  selFurn: ({ uid }) => { selUid = uid; world.select(uid); renderEditPanel(); },
   nudge: ({ dx, dy }) => { const err = nudgeFurniture(S, selUid, Number(dx), Number(dy)); if (err) { toast(err); return; } persist(); syncWorld(); world.select(selUid); renderEditPanel(); },
   discard: async ({ uid }) => {
     const f = furnById(S, uid);

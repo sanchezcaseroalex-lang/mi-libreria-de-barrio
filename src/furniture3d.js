@@ -319,6 +319,22 @@ function partitionWall() {
   boxAt(g, 1.02, .05, .14, mWalnut, 0, .5, 0, .005);
   return shade(g);
 }
+function wallHalf() {
+  const g = new THREE.Group();
+  boxAt(g, .5, 2.0, .12, M('#efe3c8', .9), -.25, 0, 0, .01);
+  boxAt(g, .52, .5, .14, M('#2f5a4a', .9), -.25, 0, 0, .01);
+  boxAt(g, .54, .06, .16, mWalnut, -.25, 2.0, 0, .01);
+  boxAt(g, .52, .05, .14, mWalnut, -.25, .5, 0, .005);
+  return shade(g);
+}
+function wallCorner() {
+  const g = new THREE.Group();
+  // dos brazos: uno hacia -x y otro hacia +z, unidos en el centro
+  boxAt(g, .56, 2.0, .12, M('#efe3c8', .9), -.22, 0, 0, .01); boxAt(g, .12, 2.0, .56, M('#efe3c8', .9), 0, 0, .22, .01);
+  boxAt(g, .58, .5, .14, M('#2f5a4a', .9), -.22, 0, 0, .01); boxAt(g, .14, .5, .58, M('#2f5a4a', .9), 0, 0, .22, .01);
+  boxAt(g, .6, .06, .16, mWalnut, -.22, 2.0, 0, .01); boxAt(g, .16, .06, .6, mWalnut, 0, 2.0, .22, .01);
+  return shade(g);
+}
 function doorway() {
   const g = new THREE.Group();
   [-1, 1].forEach((s) => boxAt(g, .14, 2.0, .16, mWalnut, s * .43, 0, 0, .015));
@@ -337,7 +353,22 @@ export function itemMesh(key) {
   if (kind === 'b') { const bk = displayBook(BOOK[id], .2, .3, .04); bk.rotation.x = -.12; g.add(bk); return g; }
   const colors = ['#d9566b', '#e0a93b', '#3a8a7a'];
   switch (id) {
-    case 'marcapaginas': colors.forEach((c, i) => boxAt(g, .035, .16, .004, M(c, .6), (i - 1) * .05, 0, 0, .001)); break;
+    case 'marcapaginas': {
+      const designs = [
+        (c, w2, h2) => { const gr = c.createLinearGradient(0, 0, 0, h2); gr.addColorStop(0, '#e86a7a'); gr.addColorStop(1, '#b8344a'); c.fillStyle = gr; c.fillRect(0, 0, w2, h2); c.strokeStyle = '#ffe7b0'; c.lineWidth = 5; c.strokeRect(6, 6, w2 - 12, h2 - 12); c.fillStyle = '#ffe7b0'; for (let i = 0; i < 5; i++) { c.beginPath(); c.arc(w2 / 2, 38 + i * 38, 9, 0, 7); c.fill(); } },
+        (c, w2, h2) => { c.fillStyle = '#2f6a5a'; c.fillRect(0, 0, w2, h2); c.strokeStyle = '#f1d9a0'; c.lineWidth = 4; for (let i = 0; i < 6; i++) { c.beginPath(); c.moveTo(0, i * 44 + 10); c.lineTo(w2, i * 44 + 40); c.stroke(); } c.fillStyle = '#f1d9a0'; c.font = '700 22px Fraunces, serif'; c.textAlign = 'center'; c.fillText('LEE', w2 / 2, h2 / 2); },
+        (c, w2, h2) => { c.fillStyle = '#f2d27a'; c.fillRect(0, 0, w2, h2); c.fillStyle = '#7a4a2a'; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(w2 / 2, 22 + i * 60); c.lineTo(w2 / 2 + 22, 60 + i * 60); c.lineTo(w2 / 2, 50 + i * 60); c.lineTo(w2 / 2 - 22, 60 + i * 60); c.closePath(); c.fill(); } c.strokeStyle = '#7a4a2a'; c.lineWidth = 4; c.strokeRect(5, 5, w2 - 10, h2 - 10); },
+      ];
+      designs.forEach((draw, i) => {
+        const tx = canvasTex(80, 240, draw);
+        const bm = new THREE.Group();
+        const body = box(.045, .15, .004, new THREE.MeshStandardMaterial({ map: tx, roughness: .6 }), .001); body.position.y = .075; bm.add(body);
+        cylAt(bm, .0035, .0035, .03, M('#d9b24a', .5, .6), 0, .15, 0, 6);
+        const bd = sph(.007, M(['#e8a0b0', '#e3b04b', '#c8452a'][i], .7)); bd.position.set(0, .18, 0); bm.add(bd);
+        [-1, 0, 1].forEach((s) => { const th = cyl(.0015, .0015, .035, M(['#e8a0b0', '#e3b04b', '#c8452a'][i], .8), 5); th.position.set(s * .004, .162, 0); bm.add(th); });
+        bm.position.set((i - 1) * .055, 0, (i - 1) * .006); bm.rotation.set(-.12 + i * .05, (i - 1) * .22, (i - 1) * .1); g.add(bm);
+      });
+    } break;
     case 'libreta': boxAt(g, .14, .19, .022, M('#c8566b', .7), 0, 0, 0, .004); boxAt(g, .012, .19, .024, M('#2a2a2a', .6), .045, 0, 0, .001); break;
     case 'vela': cylAt(g, .045, .045, .1, M('#f3e7c9', .8), 0, 0, 0, 16); cylAt(g, .004, .004, .02, M('#2a2a2a', .6), 0, .1, 0, 6); { const fl = sph(.011, MG('#ffcf6b', 1.6), 1, 1.6, 1); fl.position.set(0, .13, 0); g.add(fl); } break;
     case 'tote': boxAt(g, .16, .18, .02, M('#efe3c8', .9), 0, 0, 0, .004); { const h = new THREE.Mesh(new THREE.TorusGeometry(.04, .005, 6, 14, Math.PI), M('#c9b08a', .9)); h.position.set(0, .18, 0); g.add(h); } break;
@@ -375,7 +406,7 @@ function escaparate(f) {
 
 // Cada constructor devuelve un grupo con origen en el centro de la huella.
 export const BUILD = {
-  shelf, table: roundTable, counter, armchair, sofa, side: sideTable, lamp: floorLamp, plant, cat: catBed, rug, escaparate, wall: partitionWall, doorway, ereader: ereaderStand, coffee: coffeeCorner,
+  shelf, table: roundTable, counter, armchair, sofa, side: sideTable, lamp: floorLamp, plant, cat: catBed, rug, escaparate, wall: partitionWall, wallh: wallHalf, wallc: wallCorner, doorway, ereader: ereaderStand, coffee: coffeeCorner,
 };
 
 export function buildFurniture(f, ctx) {
