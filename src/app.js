@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.28.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.28.1';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -974,6 +974,7 @@ function openPass() {
   openSheet(`<div class="pass-hero">${passBanner()}<div class="ph-t"><small>${SEASON.name}</small><b>${SEASON.banner}</b><span>${SEASON.title}</span></div><button type="button" class="x" data-act="close" aria-label="Cerrar">×</button></div>
     <p class="muted">Ganas puntos vendiendo libros, cerrando el día y completando capítulos. Cada ${SEASON.per} puntos subes un nivel.</p>
     <p class="note">Termina el ${seasonEnd().toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })} · quedan <b>${seasonDaysLeft()}</b> ${seasonDaysLeft() === 1 ? 'día' : 'días'}. Cada mes hay una temporada nueva con su historia.</p>
+    ${S.test ? `<button type="button" class="btn wide" data-act="testSeason">🔄 Probar la ${SEASON.id === '2026-11' ? 'temporada 2 (diciembre)' : 'temporada 1 (noviembre)'}</button>` : '<p class="muted small">¿Quieres ver ya la temporada 2? Activa el «Modo pruebas» en Ajustes (Partida) y aquí aparecerá un botón.</p>'}
     ${S.pass.premium ? '' : `<div class="story-card"><p class="kick">Pase premium ✨</p><p>Desbloquea la pista de la derecha de esta temporada por <b>${SEASON.premiumPrice}</b>. Si entras a mitad de temporada, puedes jugar solo la pista gratis.</p><button type="button" class="btn small primary" data-act="buyPremium">Conseguir el premium</button></div>`}
     <div class="bar"><i style="width:${t >= SEASON.tiers ? 100 : pct}%"></i></div>
     <p class="muted small">Nivel ${t} de ${SEASON.tiers} · ${S.pass.pts} puntos</p>
@@ -999,6 +1000,7 @@ function openSettings() {
     <label class="fld">Mensaje del felpudo<input id="doormatIn" class="input" maxlength="24" value="${esc(S.doormat)}" placeholder="Bienvenid@s"></label>
     <h3>Partida</h3>
     <button type="button" class="btn wide ${S.test ? 'primary' : ''}" data-act="testMode" style="flex-direction:column;gap:2px">Modo pruebas: ${S.test ? 'ACTIVADO' : 'desactivado'}<small style="display:block;font-weight:600">Dinero ilimitado y nivel máximo (para probar todo)</small></button>
+    ${S.test ? `<button type="button" class="btn wide" data-act="testSeason">🔄 Temporada de prueba: ${SEASON.name} (pulsa para cambiar)</button>` : ''}
     <button type="button" class="btn wide" data-act="replayTut">Repetir el tutorial</button>
     <button type="button" class="btn wide" data-act="replayIntro">Ver la intro y la historia otra vez</button>
     <button type="button" class="btn wide" data-act="changeHero">Cambiar de personaje y de nombre</button>
@@ -2623,6 +2625,7 @@ const act = {
   replayTut: () => { if (S.phase !== 'morning' || busy) { toast('Termina antes la jornada.'); return; } closeSheet(); panelOpen = false; renderPanel(); tutStart(); },
   replayIntro: () => { if (busy || S.phase === 'serving') { toast('Termina antes la jornada.'); return; } closeSheet(); runIntro(false); },
   creatorBack: () => { newFlow = false; introPending = false; world.stopPedestrians(); closeSheet(); document.body.classList.remove('intro'); S = prepare(stored() ?? newGame()); goShop(); showMenu(); },
+  testSeason: () => { S.testSeason = SEASON.id === '2026-11' ? '2026-12' : '2026-11'; checkSeason(); persist(); toast(`Ahora ves la ${SEASON.name}: «${SEASON.title}».`); renderTop(); if ($('.pass-sheet')) openPass(); else if ($('.set-sheet')) openSettings(); },
   makeVideo: async () => {
     if (busy || !canVideo(S)) return;
     busy = true; vidBtn.hidden = true; panelOpen = false; renderPanel();
