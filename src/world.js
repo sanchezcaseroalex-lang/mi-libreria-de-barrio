@@ -453,9 +453,9 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       const sp = spots[k]; if (!sp) return;
       const chair = sp.f, d = dims(chair.type, chair.rot ?? 0);
       const p = spawn(n.person, [0, 0], ROT_Y[chair.rot ?? 0], false);
-      p.position.set(chair.x + d.w / 2 + sp.dx, .08, chair.y + d.h / 2 + sp.dz);
+      p.position.set(chair.x + d.w / 2 + sp.dx, .5, chair.y + d.h / 2 + sp.dz);   // las caderas sobre el cojín (a .59 de altura)
       p.userData.faceT = null; sitPerson(p, true); nookPs.push(p);
-      const book = displayBook(BOOK[n.bookId ?? 'alas'] ?? BOOKS[0], .2, .28, .04); book.rotation.x = -.5; book.position.set(0, .6, .22); p.userData.hold.add(book); p.userData.hold.position.set(0, .15, .1);
+      const book = displayBook(BOOK[n.bookId ?? 'alas'] ?? BOOKS[0], .2, .28, .04); book.rotation.x = -.7; book.position.set(0, .22, .16); p.userData.hold.add(book); p.userData.hold.position.set(0, 0, 0);   // el libro en las manos, a la altura del pecho
     });
   }
 

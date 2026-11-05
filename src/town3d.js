@@ -2,6 +2,11 @@
 import { THREE, M, MT, MG, box, boxAt, cyl, cylAt, sph, canvasTex, mulberry32, mOak, mDark, mPine } from './kit3d.js';
 
 const rnd = mulberry32(77);
+
+// Texturas pintadas: asfalto con grano, adoquín de acera, tejas y hierba
+const texAsphalt = (w, d) => { const tx = canvasTex(128, 128, (c, W, H) => { c.fillStyle = '#4d4c55'; c.fillRect(0, 0, W, H); for (let i = 0; i < 900; i++) { c.fillStyle = Math.random() < .5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.09)'; c.fillRect(Math.random() * W, Math.random() * H, 2, 2); } }); tx.repeat.set(Math.max(1, w / 3), Math.max(1, d / 3)); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; return tx; };
+const texPave = (w, d) => { const tx = canvasTex(128, 128, (c, W, H) => { c.fillStyle = '#d8cbb3'; c.fillRect(0, 0, W, H); c.strokeStyle = 'rgba(120,100,70,.35)'; c.lineWidth = 2; for (let i = 0; i <= 4; i++) { c.beginPath(); c.moveTo(0, i * 32); c.lineTo(W, i * 32); c.stroke(); c.beginPath(); c.moveTo(i * 32, 0); c.lineTo(i * 32, H); c.stroke(); } for (let i = 0; i < 300; i++) { c.fillStyle = 'rgba(90,70,40,.06)'; c.fillRect(Math.random() * W, Math.random() * H, 3, 3); } }); tx.repeat.set(Math.max(1, w / 2), Math.max(1, d / 2)); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; return tx; };
+const texTiles = (w) => { const tx = canvasTex(128, 64, (c, W, H) => { c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H); c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 3; for (let y = 0; y < 4; y++) { c.beginPath(); c.moveTo(0, y * 16 + 15); c.lineTo(W, y * 16 + 15); c.stroke(); for (let x = (y % 2) * 16; x < W; x += 32) { c.beginPath(); c.moveTo(x, y * 16); c.lineTo(x, y * 16 + 15); c.stroke(); } } }); tx.repeat.set(Math.max(2, w * 1.2), 1.2); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; return tx; };
 const pick = (a) => a[Math.floor(rnd() * a.length)];
 
 const FACADES = ['#e8c9a0', '#d9a5a0', '#c9d8c0', '#b9cfd9', '#e8d9a0', '#d9b9a0', '#cfc0dd', '#f0d4b8', '#c0cfa8'];
@@ -9,12 +14,14 @@ const ROOFS = ['#9a4a3a', '#7a4a3a', '#5a5a66', '#8a5a3a', '#6a3a3a'];
 
 function house(x, z, w, d, h, o = {}) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
-  const wall = M(o.color ?? pick(FACADES), .95);
+  const wall = M(o.color ?? pick(FACADES), .95), roofCol = pick(ROOFS), shutterCol = pick(['#3f6b66', '#7a3a3a', '#4a5a7a', '#5a7a4a', '#8a5a3a']);
   boxAt(g, w, h, d, wall, 0, 0, 0, 0.04);
   boxAt(g, w + .12, .16, d + .12, M('#e8e0d0', .9), 0, h - .06, 0, .02);           // cornisa
   // tejado a dos aguas con la cumbrera a lo largo de x
-  const rh = d * .34, slant = Math.hypot(d / 2 + .25, rh), ang = Math.atan2(rh, d / 2 + .25), roofM = M(o.roof ?? pick(ROOFS), .85);
-  [-1, 1].forEach((s) => { const r = box(w + .3, .14, slant, roofM, .02); r.position.set(0, h + rh / 2 - .02, s * (d / 4 + .06)); r.rotation.x = s * ang; g.add(r); });
+  const rh = d * .34, slant = Math.hypot(d / 2 + .25, rh), ang = Math.atan2(rh, d / 2 + .25), roofM = M(o.roof ?? roofCol, .85);
+  const tileM = new THREE.MeshStandardMaterial({ color: o.roof ?? roofCol, roughness: .85, map: texTiles(w) });
+  [-1, 1].forEach((s) => { const r = box(w + .3, .14, slant, tileM, .02); r.position.set(0, h + rh / 2 - .02, s * (d / 4 + .06)); r.rotation.x = s * ang; g.add(r); });
+  boxAt(g, w + .34, .1, .16, M('#4a3028', .8), 0, h + rh - .04, 0, .02);   // cumbrera
   boxAt(g, w + .1, rh * .9, .08, wall, 0, h, d / 2 - .04, 0);                         // frontón delantero
   boxAt(g, w + .1, rh * .9, .08, wall, 0, h, -d / 2 + .04, 0);
   if (o.chimney !== false) { boxAt(g, .45, 1.1, .45, M('#8a6a5a', .95), w * .28, h + rh * .3, -d * .15, 0.02); }
@@ -24,13 +31,23 @@ function house(x, z, w, d, h, o = {}) {
   for (let f = 0; f < floors; f++) for (let c = 0; c < cols; c++) {
     const wx = -w / 2 + (c + .5) * (w / cols), wy = .6 + f * (h / floors) + (f === 0 ? .1 : 0);
     if (f === 0 && c === Math.floor(cols / 2) && !o.noDoor) continue;
-    boxAt(g, .72, .9, .06, mOak, wx, wy, d / 2 + .02, 0.01);
+    boxAt(g, .76, .94, .06, M('#f1ece0', .8), wx, wy - .02, d / 2 + .02, 0.01);   // marco blanco
+    [-1, 1].forEach((s) => boxAt(g, .2, .9, .05, M(shutterCol, .85), wx + s * .5, wy, d / 2 + .03, .005));   // contraventanas
     const lit = rnd() < (o.lit ?? .45);
     const gl = new THREE.Mesh(new THREE.PlaneGeometry(.58, .76), lit ? new THREE.MeshBasicMaterial({ color: '#ffd98a' }) : M('#a9c8d6', .2));
     gl.position.set(wx, wy + .45, d / 2 + .06); g.add(gl);
     boxAt(g, .9, .08, .14, M('#d8d0c0', .9), wx, wy - .05, d / 2 + .08, 0);
+    boxAt(g, .58, .03, .02, M('#f1ece0', .8), wx, wy + .43, d / 2 + .08, 0); boxAt(g, .03, .76, .02, M('#f1ece0', .8), wx, wy + .07, d / 2 + .08, 0);   // cruz de la ventana
+    if (rnd() < .35) { boxAt(g, .8, .12, .16, M('#7a4a32', .9), wx, wy - .16, d / 2 + .14, .01); for (let k = 0; k < 4; k++) { const fl = sph(.07, M(pick(['#e8556b', '#f2b84a', '#fff2d6', '#c070c8']), .8)); fl.position.set(wx - .27 + k * .18, wy - .02, d / 2 + .15); g.add(fl); } }   // jardinera con flores
   }
-  if (!o.noDoor) { boxAt(g, .9, 1.55, .08, mPine, 0, 0, d / 2 + .02, 0.02); boxAt(g, 1.3, .1, .3, M('#d8d0c0', .9), 0, 1.6, d / 2 + .12, 0.02); }
+  boxAt(g, w + .06, .38, d + .06, M('#b8a890', .95), 0, 0, 0, .02);   // zócalo de piedra
+  if (!o.noDoor) {
+    boxAt(g, .96, 1.6, .08, M('#f1ece0', .8), 0, 0, d / 2 + .02, 0.02); boxAt(g, .8, 1.5, .08, M(pick(['#7a3a3a', '#3f6b66', '#4a5a7a', '#8a5a3a']), .8), 0, 0, d / 2 + .05, 0.02);
+    const kn = sph(.04, M('#d9b24a', .3, .8)); kn.position.set(.28, .8, d / 2 + .1); g.add(kn);
+    boxAt(g, 1.5, .12, .5, M('#c9c2b4', .9), 0, 0, d / 2 + .3, .02); boxAt(g, 1.3, .1, .3, M('#d8d0c0', .9), 0, 1.66, d / 2 + .12, 0.02);   // escalón y marquesina
+    if (rnd() < .6) { const ap = box(w * .36, .1, .7, M(pick(['#c8566b', '#3f6b66', '#e0a93b']), .9), .01); ap.position.set(0, 2.05, d / 2 + .38); ap.rotation.x = .3; g.add(ap); }
+  }
+  if (h > 4 && w > 4.5) { boxAt(g, 1.3, .08, .6, M('#2a2a2e', .6, .3), 0, h * .5 + .35, d / 2 + .32, .01); for (let k = 0; k < 7; k++) boxAt(g, .03, .5, .03, M('#2a2a2e', .6, .3), -.62 + k * .2, h * .5 + .35, d / 2 + .6, 0); }   // balcón con barandilla
   g.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
   return g;
 }
@@ -41,6 +58,56 @@ function tree(x, z, s = 1) {
   const cols = ['#5c9457', '#6aa55d', '#4f8a52', '#7fb869', '#c98f4a'];
   const c = pick(cols);
   for (let i = 0; i < 3; i++) { const cr = sph((.9 - i * .15) * s, M(c, .9), 1, .9, 1); cr.position.set((rnd() - .5) * .3 * s, (1.5 + i * .6) * s, (rnd() - .5) * .3 * s); g.add(cr); }
+  for (let i = 0; i < 4; i++) { const a = i * 1.6 + rnd(); const cr = sph(.5 * s, M(c, .9), 1, .85, 1); cr.position.set(Math.cos(a) * .6 * s, (1.45 + (i % 2) * .5) * s, Math.sin(a) * .6 * s); g.add(cr); }
+  g.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+  return g;
+}
+
+// coche aparcado (estilo de juguete)
+function car(x, z, ry, col) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry;
+  const body = M(col, .5, .2), glass = M('#a9c8d6', .15), dark = M('#2a2a2e', .7);
+  boxAt(g, 2.1, .5, 1.0, body, 0, .22, 0, .12);
+  boxAt(g, 1.1, .42, .9, body, -.1, .7, 0, .14);
+  [[-.2, 0], [.18, 0]].forEach(([dx]) => { const w = box(.04, .32, .8, glass, .01); w.position.set(dx - .1, .78, 0); g.add(w); });
+  [[-.7, -.5], [-.7, .5], [.7, -.5], [.7, .5]].forEach(([wx, wz]) => { const w = cyl(.2, .2, .16, dark, 14); w.rotation.x = Math.PI / 2; w.position.set(wx, .2, wz); g.add(w); const hub = cyl(.09, .09, .18, M('#c9c9c9', .4, .6), 10); hub.rotation.x = Math.PI / 2; hub.position.set(wx, .2, wz); g.add(hub); });
+  [[1.05, -.32], [1.05, .32]].forEach(([hx, hz]) => { const h = sph(.07, MG('#fff2c0', 1.2)); h.position.set(hx, .34, hz); g.add(h); });
+  [[-1.05, -.32], [-1.05, .32]].forEach(([hx, hz]) => { const h = sph(.06, M('#c8302a', .5)); h.position.set(hx, .34, hz); g.add(h); });
+  g.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+  return g;
+}
+
+function mailbox(x, z) {
+  const g = new THREE.Group(); g.position.set(x, 0, z);
+  cylAt(g, .05, .05, .9, M('#3a3a42', .6, .3), 0, 0, 0, 8);
+  boxAt(g, .34, .42, .26, M('#e0a93b', .5), 0, .85, 0, .06);
+  boxAt(g, .2, .04, .01, M('#2a2a2e', .6), 0, 1.12, .135, 0);
+  g.traverse((m) => { if (m.isMesh) { m.castShadow = true; } });
+  return g;
+}
+
+function bin(x, z) {
+  const g = new THREE.Group(); g.position.set(x, 0, z);
+  cylAt(g, .22, .18, .7, M('#4a6a5a', .7), 0, 0, 0, 12); cylAt(g, .24, .24, .05, M('#3a5a4a', .7), 0, .7, 0, 12);
+  g.traverse((m) => { if (m.isMesh) { m.castShadow = true; } });
+  return g;
+}
+
+// pizarra con el menú del día y mesa con libros a la puerta de la librería
+function chalkboard(x, z, ry = 0) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry;
+  const tx = canvasTex(128, 192, (c, W, H) => { c.fillStyle = '#26302f'; c.fillRect(0, 0, W, H); c.strokeStyle = '#e8d9b0'; c.lineWidth = 4; c.strokeRect(6, 6, W - 12, H - 12); c.fillStyle = '#f3e7c9'; c.font = '700 22px Caveat, cursive'; c.textAlign = 'center'; c.fillText('Hoy leemos', W / 2, 44); c.font = '600 18px Caveat, cursive'; c.fillText('novedades', W / 2, 74); c.fillText('té y cafés', W / 2, 100); c.strokeStyle = '#e8a0a8'; c.beginPath(); c.arc(W / 2, 140, 16, 0, 7); c.stroke(); c.beginPath(); c.moveTo(W / 2 - 10, 140); c.lineTo(W / 2, 148); c.lineTo(W / 2 + 12, 130); c.stroke(); });
+  [-1, 1].forEach((s) => { const p = box(.7, .86, .04, new THREE.MeshStandardMaterial({ map: s > 0 ? tx : null, color: s > 0 ? '#ffffff' : '#26302f', roughness: .85 }), .01); p.position.set(0, .55, s * .22); p.rotation.x = -s * .22; g.add(p); const fr = box(.76, .92, .03, mOak, .01); fr.position.set(0, .55, s * .235); fr.rotation.x = -s * .22; fr.scale.set(1, 1, 1); g.add(fr); p.position.z += s * .02; });
+  g.traverse((m) => { if (m.isMesh) { m.castShadow = true; } });
+  return g;
+}
+function bookStand(x, z) {
+  const g = new THREE.Group(); g.position.set(x, 0, z);
+  boxAt(g, 1.5, .06, .7, mOak, 0, .72, 0, .02);
+  [[-.65, -.28], [.65, -.28], [-.65, .28], [.65, .28]].forEach(([lx, lz]) => boxAt(g, .06, .72, .06, mDark, lx, 0, lz, .01));
+  const cols = ['#c8566b', '#3a5a8a', '#e0a93b', '#5c9457', '#7a4aa6', '#a2453a', '#2f6a5a', '#e8d9b0'];
+  for (let i = 0; i < 12; i++) { const b = box(.2, .03 + (i % 3) * .005, .28, M(cols[i % cols.length], .8), .005); b.position.set(-.55 + (i % 6) * .21, .78 + Math.floor(i / 6) * .033, -.1 + Math.floor(i / 6) * .22); b.rotation.y = (i % 3 - 1) * .08; g.add(b); }
+  for (let i = 0; i < 5; i++) { const b = box(.045, .34, .24, M(cols[(i * 3) % cols.length], .8), .005); b.position.set(-.35 + i * .06, .93, .2); b.rotation.z = .1 * (i % 2 ? 1 : -1); g.add(b); }
   g.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
   return g;
 }
@@ -48,7 +115,8 @@ function tree(x, z, s = 1) {
 function lamp(x, z) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
   cylAt(g, .05, .07, 2.6, M('#2f3a3a', .6, .4), 0, 0, 0, 8);
-  const b = sph(.17, MG('#ffe3a0', 2.4)); b.position.y = 2.7; b.castShadow = false; g.add(b);
+  boxAt(g, .3, .06, .3, M('#2f3a3a', .6, .4), 0, 2.62, 0, .01); cylAt(g, .16, .16, .04, M('#2f3a3a', .6, .4), 0, 2.97, 0, 8);
+  const b = sph(.17, MG('#ffe3a0', 2.4)); b.position.y = 2.82; b.castShadow = false; g.add(b);
   return g;
 }
 
@@ -92,6 +160,10 @@ function shopFront(x, z, name = 'La Tinta y el Té') {
     c.fillStyle = '#f6e3b0'; c.font = `700 ${name.length > 24 ? 30 : name.length > 16 ? 40 : 52}px Fraunces, serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(name, w / 2, h / 2 - 8); c.font = '600 28px Caveat, cursive'; c.fillText('librería · desde 1982', w / 2, h - 24);
   });
   const sp = new THREE.Mesh(new THREE.PlaneGeometry(3.6, .9), new THREE.MeshStandardMaterial({ map: sign, roughness: .8 })); sp.position.set(0, 3.55, front + .1); g.add(sp);
+  // mesa de libros y pizarra a la puerta, faroles de pared y jardineras bajo los escaparates
+  g.add(bookStand(-2.3, front + 1.25)); g.add(chalkboard(1.6, front + 1.15, -.3));
+  [-1, 1].forEach((s) => { const br = boxAt(g, .06, .06, .3, M('#2a2a2e', .6, .3), s * 1.15, 2.7, front + .15, .01); const ln = sph(.13, MG('#ffe3a0', 2.2)); ln.position.set(s * 1.15, 2.55, front + .32); g.add(ln); });
+  [-2.3, 2.3].forEach((cx) => { boxAt(g, 2.0, .22, .3, M('#7a4a32', .9), cx, .45, front + .32, .02); for (let k = 0; k < 7; k++) { const fl = sph(.1, M(['#e8556b', '#f2b84a', '#fff2d6', '#c070c8', '#6aa55d'][k % 5], .8)); fl.position.set(cx - .85 + k * .28, .72, front + .36); g.add(fl); } });
   // macetas y cartel de pizarra
   [-1, 1].forEach((s) => { cylAt(g, .22, .17, .4, M('#c4704a', .85), s * 3.1, 0, front + .6, 12); const l = sph(.32, M('#5c9457', .9), 1, 1.1, 1); l.position.set(s * 3.1, .75, front + .6); g.add(l); });
   g.traverse((m) => { if (m.isMesh) { m.castShadow = m.castShadow ?? true; m.receiveShadow = true; } });
@@ -104,12 +176,18 @@ export function buildTown(shopName) {
   // suelo: adoquín/hierba
   const ground = new THREE.Mesh(new THREE.BoxGeometry(W, .4, D), [M('#3a2a20'), M('#3a2a20'), M('#8fb56f', 1), M('#2f2118'), M('#3a2a20'), M('#3a2a20')]);
   ground.position.y = -.2; ground.receiveShadow = true; group.add(ground);
-  const road = M('#4b4a52', .95), side = M('#d8cbb3', .95), strip = M('#f3e7c9', .9);
+  const strip = M('#f3e7c9', .9);
+  const roadMat = (w, d) => new THREE.MeshStandardMaterial({ map: texAsphalt(w, d), roughness: .95 });
+  const sideMat = (w, d) => new THREE.MeshStandardMaterial({ map: texPave(w, d), roughness: .95 });
   const flat = (w, d, mat, x, z, y = .015) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true; group.add(m); return m; };
   // calles
-  flat(W, 3.2, road, 0, 0); flat(3.2, D, road, -13, 0); flat(3.2, D, road, 13, 0);
-  flat(W, 1.5, side, 0, -2.4, .02); flat(W, 1.5, side, 0, 2.4, .02); flat(1.5, D, side, -10.6, 0, .02); flat(1.5, D, side, 10.6, 0, .02); flat(1.5, D, side, -15.4, 0, .02); flat(1.5, D, side, 15.4, 0, .02);
-  flat(W, 2.2, side, 0, -4.2, .02);
+  flat(W, 3.2, roadMat(W, 3.2), 0, 0); flat(3.2, D, roadMat(3.2, D), -13, 0); flat(3.2, D, roadMat(3.2, D), 13, 0);
+  flat(W, 1.5, sideMat(W, 1.5), 0, -2.4, .02); flat(W, 1.5, sideMat(W, 1.5), 0, 2.4, .02); flat(1.5, D, sideMat(1.5, D), -10.6, 0, .02); flat(1.5, D, sideMat(1.5, D), 10.6, 0, .02); flat(1.5, D, sideMat(1.5, D), -15.4, 0, .02); flat(1.5, D, sideMat(1.5, D), 15.4, 0, .02);
+  flat(W, 2.2, sideMat(W, 2.2), 0, -4.2, .02);
+  // bordillos a lo largo de la calle principal
+  [-1.65, 1.65].forEach((cz) => { const cb = box(W, .08, .12, M('#b5b0a6', .9), .01); cb.position.set(0, .04, cz); cb.receiveShadow = true; group.add(cb); });
+  // pasos de cebra delante de la librería
+  for (let k = -3; k <= 3; k++) flat(.5, 3.0, strip, 2.2 + k * .85, 0, .031);
   for (let x = -34; x < 34; x += 3) flat(1.3, .12, strip, x, 0, .03);
   // casas del lado norte, con la fachada hacia la calle; el hueco central es la librería
   const xs = [-33, -27.5, -22, -17.5, 0, 0];
@@ -132,6 +210,10 @@ export function buildTown(shopName) {
   [[-15, 22], [15, 22], [-34, 6], [34, 6]].forEach(([x, z]) => group.add(tree(x, z, 1.1)));
   // árboles lejanos para que no se vea el borde del mundo
   for (let i = 0; i < 90; i++) { const x = -72 + rnd() * 144, z = -48 + rnd() * 96; if (Math.abs(x) < 38 && z > -26 && z < 26) continue; group.add(tree(x, z, .9 + rnd() * .8)); }
+  // coches aparcados, buzones y papeleras
+  [[-21, 1.1, 0, '#c8566b'], [-5, 1.1, 0, '#3a5a8a'], [24, 1.1, 0, '#e0a93b'], [-26, -1.1, Math.PI, '#5c9457'], [6, -1.1, Math.PI, '#e8e0d0'], [19, -1.1, Math.PI, '#7a4aa6']].forEach(([x, z, ry, col]) => group.add(car(x, z, ry, col)));
+  [[-3.4, -3.2], [7.5, -3.2], [-18, -3.2]].forEach(([x, z]) => group.add(mailbox(x, z)));
+  [[11.5, -3.3], [-12.2, -3.3], [-24, -3.3]].forEach(([x, z]) => group.add(bin(x, z)));
   // luz cálida del escaparate
   const glow = new THREE.PointLight('#ffc27a', 14, 12, 2); glow.position.set(2.2, 2, -4 - 1.2 + .4); group.add(glow);
   // rutas para los paseantes (aceras): de punta a punta

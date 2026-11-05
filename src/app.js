@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.23.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.24.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -502,8 +502,9 @@ async function directBuy(e, tok) {
   const price = directSale(S, id);
   if (price) {
     sfx('coin'); world.say(e.p, `Me lo llevo  +${price} €`, 'happy');
+    toast(`Un cliente ha cogido «${BOOK[id].title}» y lo ha pagado · +${price} €`);
     persist(); renderTop(); syncWorld();
-    await sleep(1500); world.say(e.p, '');
+    await sleep(2300); world.say(e.p, '');
   }
   world.carry(e.p, null);
 }
@@ -537,7 +538,7 @@ async function runShopper(e, tok) {
     } else {
       free();
       if (e.ambient && tok === dayTok && sitCell() && Math.random() < 0.3 && (await goRead(e, tok))) return;
-      if (e.ambient && tok === dayTok && S.level >= 2 && Math.random() < 0.4) await directBuy(e, tok);
+      if (e.ambient && tok === dayTok && S.level >= 2 && Math.random() < 0.55) await directBuy(e, tok);
       await exitShop(e);
     }
   } finally {
