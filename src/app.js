@@ -1610,9 +1610,10 @@ async function openBoxGame(id) {
   if (!box || busy) return;
   panelOpen = false; renderPanel(); busy = true;
   const items = box.items.flatMap((it) => Array.from({ length: it.qty }, () => it.id));
-  const ok = await runOpenBox({ items, hard: S.settings.hard, buzz });
+  const ok = await runOpenBox({ items, hard: S.settings.hard, buzz, others: S.boxes.length - 1 });
   busy = false;
   if (!ok) { renderPanel(); return; }
+  if (ok === 'all') { const n = openAllBoxes(S); persist(); syncWorld(); renderPanel(); renderTop(); toast(`${n} libros guardados en el almacén. Puedes exponer uno de cada título.`); return; }
   const b = openBox(S, id);
   persist(); syncWorld(); renderPanel(); renderTop();
   if (b) toast(`${boxBooks(b)} libros guardados en el almacén. Puedes exponer uno de cada título.`);

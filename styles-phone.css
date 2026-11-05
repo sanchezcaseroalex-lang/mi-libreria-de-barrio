@@ -475,3 +475,5 @@ body.intro #openShopBtn, body.inmenu #openShopBtn, body.editing #openShopBtn { d
 .pl.camara .ph-status { color: #fff !important; }
 
 .picker .warn { margin: 6px 0; padding: 6px 10px; border-radius: 10px; background: #f7c9b8; color: #8a2f1a; font: 700 13px var(--sans); }
+
+.bx-foot .bx-all { flex: none; min-height: 32px; padding: 4px 10px; font-size: 12px; white-space: normal; text-align: left; max-width: 38%; line-height: 1.15; }

@@ -233,21 +233,21 @@ function labelTexture(who, shop) {
 
 /* ---------- Estructura común del minijuego ---------- */
 
-function overlay(title, help, okLabel) {
+function overlay(title, help, okLabel, withAll = false) {
   const root = document.createElement('div');
   root.id = 'mini'; root.className = 'bx-ov';
   root.innerHTML = `<div class="mini-wrap bx-wrap"><header><div><p class="kick">Minijuego</p><h2>${esc(title)}</h2><p class="muted bx-help">${esc(help)}</p></div><button type="button" class="x" data-quit aria-label="Salir">×</button></header>
-    <div class="bx-stage"></div><footer class="bx-foot"><span class="bx-hint"></span><button type="button" class="btn primary" data-ok disabled>${esc(okLabel)}</button></footer></div>`;
+    <div class="bx-stage"></div><footer class="bx-foot">${withAll ? '<button type="button" class="btn small ghost bx-all" data-all>Abrir todas las cajas de golpe</button>' : ''}<span class="bx-hint"></span><button type="button" class="btn primary" data-ok disabled>${esc(okLabel)}</button></footer></div>`;
   document.body.append(root);
-  return { root, stage: root.querySelector('.bx-stage'), help: root.querySelector('.bx-help'), hint: root.querySelector('.bx-hint'), ok: root.querySelector('[data-ok]'), quit: root.querySelector('[data-quit]') };
+  return { root, stage: root.querySelector('.bx-stage'), help: root.querySelector('.bx-help'), hint: root.querySelector('.bx-hint'), ok: root.querySelector('[data-ok]'), quit: root.querySelector('[data-quit]'), all: root.querySelector('[data-all]') };
 }
 const flash = (el) => { el.classList.remove('bad'); void el.offsetWidth; el.classList.add('bad'); };
 
 /* ---------- Abrir la caja recibida ---------- */
 
-export function runOpenBox({ items, hard = false, buzz = null }) {
+export function runOpenBox({ items, hard = false, buzz = null, others = 0 }) {
   return new Promise((resolve) => {
-    const ui = overlay('Abre la caja', hard ? 'Pasa el cúter por la cinta, de lado a lado, sin salirte de la línea.' : 'Pasa el dedo por la cinta: el cúter la corta.', 'Guardar todo en el almacén');
+    const ui = overlay('Abre la caja', hard ? 'Pasa el cúter por la cinta, de lado a lado, sin salirte de la línea.' : 'Pasa el dedo por la cinta: el cúter la corta.', 'Guardar todo en el almacén', others > 0);
     const n = items.length;
     const sumT = items.reduce((t, id) => t + thick(id), 0);
     const L = Math.max(1.2, sumT + .3);
@@ -324,6 +324,7 @@ export function runOpenBox({ items, hard = false, buzz = null }) {
     const end = (v) => { if (finished) return; finished = true; st.dispose(); ui.root.remove(); resolve(v); };
     ui.quit.onclick = () => end(false);
     ui.ok.onclick = () => end(true);
+    if (ui.all) ui.all.onclick = () => end('all');   // abrir todas las cajas de golpe, sin jugar
     ui.hint.textContent = '0 %';
   });
 }
