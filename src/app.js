@@ -22,7 +22,7 @@ import { showBook3D } from './viewer.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = 'v19 · ordenador en el mostrador';
+const BUILD = 'v20 · ordenador y caja del lado correcto';
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];

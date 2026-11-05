@@ -111,13 +111,15 @@ function counter(f, ctx) {
   boxAt(g, W + .1, .07, D + .12, mOak, 0, H - .07, .02, .02);
   boxAt(g, W, .1, .06, mDark, 0, 0, D / 2 - .04, .01);
   const y = H;
-  boxAt(g, .42, .16, .34, M('#3d4a47', .5, .3), -.9, y, -.1, .03);
-  const scr = box(.3, .2, .03, M('#26302f', .4, .3), .01); scr.position.set(-.9, y + .26, -.14); scr.rotation.x = -.3; g.add(scr);
-  const sc2 = new THREE.Mesh(new THREE.PlaneGeometry(.24, .13), MG('#8ee0b0', .9)); sc2.position.set(-.9, y + .27, -.12); sc2.rotation.x = -.3; g.add(sc2);
+  { const till = new THREE.Group(); till.position.set(-.9, y, -.06); till.rotation.y = Math.PI;   // la pantalla mira hacia ti, no hacia el cliente
+    boxAt(till, .42, .16, .34, M('#3d4a47', .5, .3), 0, 0, 0, .03);
+    const scr = box(.3, .2, .03, M('#26302f', .4, .3), .01); scr.position.set(0, .26, -.04); scr.rotation.x = -.3; till.add(scr);
+    const sc2 = new THREE.Mesh(new THREE.PlaneGeometry(.24, .13), MG('#8ee0b0', .9)); sc2.position.set(0, .27, -.02); sc2.rotation.x = -.3; till.add(sc2);
+    g.add(till); }
   // ordenador del inventario: monitor, teclado y ratón
-  { const px = -.42, pz = -.2;
-    cylAt(g, .09, .11, .02, M('#c9c3b6', .5, .2), px, y, pz, 20); boxAt(g, .035, .1, .03, M('#c9c3b6', .5, .2), px, y + .02, pz - .01, .005);
-    const mon = new THREE.Group(); mon.position.set(px, y + .13, pz); mon.rotation.x = -.12;
+  { const px = 0, pz = 0; const pcg = new THREE.Group(); pcg.position.set(-.42, y, .06); pcg.rotation.y = Math.PI;   // pantalla hacia ti (detrás del mostrador)
+    cylAt(pcg, .09, .11, .02, M('#c9c3b6', .5, .2), px, 0, pz, 20); boxAt(pcg, .035, .1, .03, M('#c9c3b6', .5, .2), px, .02, pz - .01, .005);
+    const mon = new THREE.Group(); mon.position.set(px, .13, pz); mon.rotation.x = -.12;
     boxAt(mon, .5, .32, .03, M('#2b2f33', .4, .3), 0, 0, 0, .012);
     const scrTex = canvasTex(256, 160, (c, w2, h2) => {
       c.fillStyle = '#10202c'; c.fillRect(0, 0, w2, h2); c.fillStyle = '#2a8fc0'; c.fillRect(0, 0, w2, 22);
@@ -125,9 +127,10 @@ function counter(f, ctx) {
       for (let i = 0; i < 6; i++) { c.fillStyle = i % 2 ? '#1a3446' : '#142a3a'; c.fillRect(6, 30 + i * 20, w2 - 12, 18); c.fillStyle = '#bfe6ff'; c.fillRect(12, 36 + i * 20, 60 + ((i * 37) % 70), 5); c.fillStyle = '#8ee0b0'; c.fillRect(w2 - 44, 36 + i * 20, 28, 5); }
     });
     const scr2 = new THREE.Mesh(new THREE.PlaneGeometry(.45, .27), new THREE.MeshBasicMaterial({ map: scrTex })); scr2.position.set(0, .165, .017); mon.add(scr2);
-    g.add(mon);
-    boxAt(g, .34, .014, .12, M('#d9d4c8', .6), px - .02, y, pz + .3, .005);
-    boxAt(g, .05, .018, .07, M('#d9d4c8', .6), px + .3, y, pz + .3, .008);
+    pcg.add(mon);
+    boxAt(pcg, .34, .014, .12, M('#d9d4c8', .6), px - .02, 0, pz + .3, .005);
+    boxAt(pcg, .05, .018, .07, M('#d9d4c8', .6), px + .3, 0, pz + .3, .008);
+    g.add(pcg);
   }
   const bell = new THREE.Mesh(new THREE.SphereGeometry(.07, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), M('#d9b24a', .3, .8)); bell.position.set(-.2, y + .02, .24); g.add(bell);
   for (let k = 0; k < 3; k++) { const o = lyingBook(BOOK[['alas', 'sellos', 'cuervos'][k]], .26, .38, .05); o.position.set(.35, y + k * .05, 0); o.rotation.y = .3 + k * .45; g.add(o); }
