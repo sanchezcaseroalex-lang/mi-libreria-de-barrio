@@ -1409,6 +1409,7 @@ function panelShop() {
   panelEl.innerHTML = `
     <div class="pn-h"><h2>Buenos días</h2><button type="button" class="x" data-act="tab" data-id="shop" aria-label="Cerrar">×</button></div>
     <p class="muted">${S.weather === 'lluvia' ? 'Llueve fuera: tarde perfecta para leer.' : S.weather === 'nublado' ? 'Cielo gris y ganas de novelas.' : 'Sol de mañana en el escaparate.'}${S.boxes.length ? ` Tienes <b>${S.boxes.length}</b> ${S.boxes.length === 1 ? 'caja' : 'cajas'} sin abrir en el almacén.` : ''}</p>
+    ${S.boxes.length > 1 ? `<button type="button" class="btn primary wide" data-act="openAllBoxes">Abrir las ${S.boxes.length} cajas de golpe</button>` : ''}
     ${trend.length ? `<p class="trend">Tendencia: ${trend.map((t) => `<b>${esc(BOOK[t.id].title)}</b>`).join(', ')}</p>` : ''}
     ${S.event ? `<p class="trend">${S.event.type === 'autor' ? `Hoy firma <b>${esc(S.event.who)}</b> en la tienda: viene gente a por «${esc(BOOK[S.event.bookId].title)}».` : `Hoy es el club de lectura: leen «${esc(BOOK[S.event.bookId].title)}».`} Ten ejemplares.</p>` : ''}
     ${notShown ? `<p class="note">Hay <b>${notShown}</b> títulos que aún no tienes expuestos en la tienda.</p>` : ''}
@@ -2360,8 +2361,9 @@ function updateOpenBtn() {
   if (!openBtn) return;
   const calm = S.hero && !busy && !editing && !introPending && menuEl.hidden && layer.hidden && phoneEl.hidden && dlg.hidden && !panelOpen && !samirIn && !talking && !document.body.classList.contains('intro');
   const evening = calm && S.phase === 'evening' && S.day > 0 && !!S.summary;
-  openBtn.textContent = evening ? 'Cerrar tienda' : 'Abrir tienda'; openBtn.dataset.act = evening ? 'summary' : 'open';
-  const show = evening || S.hero && S.phase === 'morning' && !busy && !editing && !introPending && menuEl.hidden && layer.hidden && phoneEl.hidden && dlg.hidden && !panelOpen && !samirIn && !talking && !document.body.classList.contains('intro') && !(S.day === 0 && S.served >= 1);
+  const boxesHere = calm && world.view === 'store' && S.boxes.length > 1;
+  openBtn.textContent = boxesHere ? `Abrir las ${S.boxes.length} cajas de golpe` : evening ? 'Cerrar tienda' : 'Abrir tienda'; openBtn.dataset.act = boxesHere ? 'openAllBoxes' : evening ? 'summary' : 'open';
+  const show = boxesHere || evening || S.hero && S.phase === 'morning' && !busy && !editing && !introPending && menuEl.hidden && layer.hidden && phoneEl.hidden && dlg.hidden && !panelOpen && !samirIn && !talking && !document.body.classList.contains('intro') && !(S.day === 0 && S.served >= 1);
   openBtn.hidden = !show;
 }
 setInterval(updateOpenBtn, 350);
