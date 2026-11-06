@@ -74,11 +74,11 @@ export const BOOKS = [
   { id: 'sellos', title: 'El Señor de los Sellos', author: 'Edmund Hallam', genre: 'epica', tags: ['aventura', 'epica', 'magia', 'reinos'], unlock: 1, price: 25, motif: 'anillo', font: 'cinzel', w: 14, pal: ['#10160f', '#2a3a22', '#d9b24a', '#f1ecd2'] },
   { id: 'coronas', title: 'Las Dos Atalayas', author: 'Gael Marlow', genre: 'epica', tags: ['politica', 'reinos', 'epica', 'oscuro'], unlock: 1, price: 24, motif: 'atalayas', font: 'cinzel', w: 14, pal: ['#17181b', '#3b3d44', '#b3261e', '#e8e4dc'] },
   { id: 'tronos', title: 'Juego de Coronas', author: 'Gerard R. Martín', genre: 'epica', tags: ['politica', 'reinos', 'epica', 'oscuro'], unlock: 3, price: 26, motif: 'espadas', font: 'cinzel', w: 15, pal: ['#17181b', '#3b3d44', '#b3261e', '#e8e4dc'] },
-  { id: 'cicatriz', title: 'Aldric Vane y la Piedra Lunar', author: 'Jenny Rowley', genre: 'epica', tags: ['magia', 'academia', 'aventura'], unlock: 1, price: 19, motif: 'gafas', font: 'fraunces', w: 13, pal: ['#2a1858', '#5a2d96', '#f2c14e', '#fbf3da'] },
-  { id: 'brisa', title: 'Aldric Vane y la Cámara del Viento', author: 'Patricio Rojas', genre: 'epica', tags: ['magia', 'academia', 'aventura'], unlock: 2, price: 23, motif: 'viento', font: 'fraunces', w: 14, pal: ['#1b2a33', '#4b6a74', '#e9d9a8', '#eef0e8'] },
+  { id: 'cicatriz', title: 'Harry Plotter y la Piedra Lunar', author: 'J. K. Rowley', genre: 'epica', tags: ['magia', 'academia', 'aventura'], unlock: 1, price: 19, motif: 'gafas', font: 'fraunces', w: 13, pal: ['#2a1858', '#5a2d96', '#f2c14e', '#fbf3da'] },
+  { id: 'brisa', title: 'Harry Plotter y la Cámara del Viento', author: 'Patricio Rojas', genre: 'epica', tags: ['magia', 'academia', 'aventura'], unlock: 2, price: 23, motif: 'viento', font: 'fraunces', w: 14, pal: ['#1b2a33', '#4b6a74', '#e9d9a8', '#eef0e8'] },
   { id: 'niebla', title: 'El Retorno del Heredero', author: 'Bea Sandoval', genre: 'epica', tags: ['magia', 'intriga', 'politica', 'aventura'], unlock: 3, price: 22, motif: 'niebla', font: 'cinzel', w: 13, pal: ['#25282c', '#5b6168', '#d7dde2', '#f3f5f6'] },
   { id: 'cazador', title: 'El Cazador de Monstruos', author: 'Andrés Szapa', genre: 'epica', tags: ['aventura', 'oscuro', 'magia'], unlock: 4, price: 21, motif: 'ojo', font: 'oswald', w: 11, pal: ['#0d0d0a', '#2a2a14', '#d9c12e', '#f7f0c8'] },
-  { id: 'zafiro', title: 'Aldric Vane y el Cáliz de Zafiro', author: 'Cristian Palo', genre: 'epica', tags: ['dragones', 'aventura', 'magia', 'reinos'], unlock: 5, price: 20, motif: 'gema', font: 'fraunces', w: 12, pal: ['#0b2a5a', '#1f5ea8', '#9ad1ff', '#eaf4ff'] },
+  { id: 'zafiro', title: 'Harry Plotter y el Cáliz de Zafiro', author: 'Cristian Palo', genre: 'epica', tags: ['dragones', 'aventura', 'magia', 'reinos'], unlock: 5, price: 20, motif: 'gema', font: 'fraunces', w: 12, pal: ['#0b2a5a', '#1f5ea8', '#9ad1ff', '#eaf4ff'] },
   { id: 'desaparecida', title: 'Desaparecida', author: 'Gema Fuentes', genre: 'thriller', tags: ['psico', 'crimen', 'intriga'], unlock: 1, price: 18, motif: 'silueta', font: 'oswald', w: 10, pal: ['#f2efe9', '#d9d3c8', '#c3322b', '#1a1a1a'] },
   { id: 'tatuaje', title: 'La Chica del Dragón Tatuado', author: 'Sven Almroth', genre: 'thriller', tags: ['crimen', 'intriga', 'oscuro'], unlock: 2, price: 20, motif: 'tatuaje', font: 'oswald', w: 12, pal: ['#0a0a0a', '#2a0d0d', '#e2552b', '#f3e6dc'] },
   { id: 'leonardo', title: 'El Código Leonardo', author: 'Dario Braun', genre: 'thriller', tags: ['intriga', 'aventura', 'crimen'], unlock: 2, price: 19, motif: 'vitruvio', font: 'fraunces', w: 12, pal: ['#2a0d12', '#6a1e26', '#e0b552', '#f7ecd0'] },
@@ -115,7 +115,7 @@ export const SAGAS = [
   { id: 'corte', name: 'Cortes de Hadas', ids: ['espinas', 'hiedra', 'escarcha'] },
   { id: 'brasa', name: 'Alas de Brasa', ids: ['alas', 'brasas', 'vibora'] },
   { id: 'reinos', name: 'El Señor de los Sellos', ids: ['sellos', 'coronas', 'niebla'] },
-  { id: 'aprendices', name: 'Aldric Vane', ids: ['cicatriz', 'brisa', 'zafiro'] },
+  { id: 'aprendices', name: 'Harry Plotter', ids: ['cicatriz', 'brisa', 'zafiro'] },
   { id: 'crimen', name: 'Casos sin Resolver', ids: ['desaparecida', 'paciente', 'tranvia'] },
 ];
 SAGAS.forEach((s) => s.ids.forEach((id, i) => { BOOK[id].saga = { id: s.id, n: i + 1 }; BOOK[id].author = BOOK[s.ids[0]].author; }));   // una saga la escribe una sola persona
