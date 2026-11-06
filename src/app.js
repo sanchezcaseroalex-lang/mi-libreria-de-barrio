@@ -8,7 +8,7 @@ import {
   newGame, ITEMS, NETWORKS, XP_LEVELS, availableBooks, cozy, storageCount, shelfFree, shelfSlots, containers, furnById,
   inventory, countOf, buyFurniture, placeFurniture, storeFurniture, rotateFurniture, placeBook, takeBack, autoPlace, onDisplay, sellable, buyItem,
   orderBooks, pendingOrders, openShop, offer, dismiss, nextCustomer, nextDay, createAccount, canPost, postPhoto, postVideo,
-  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, canVideo, makeVideo, canGift, giveGift, giftStock, discardFurniture, nudgeFurniture, pruneWindow, setWindow, KEEPSAKES, windowFilled, windowBoost, WIN_SLOTS, windowOwned, directSale, LOANS, LOAN_LEVEL, loanInfo, takeLoan, repayLoan, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
+  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, canVideo, makeVideo, canGift, giveGift, giftStock, discardFurniture, nudgeFurniture, pruneWindow, setWindow, KEEPSAKES, multiTry, multiSell, windowFilled, windowBoost, WIN_SLOTS, windowOwned, directSale, LOANS, LOAN_LEVEL, loanInfo, takeLoan, repayLoan, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
 } from './game.js';
 import { CAST, genderize, setHeroGender, newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
 import { HERO_LOOK } from './people3d.js';
@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.41.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.42.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -1307,7 +1307,7 @@ function talkAgain(e, text, expr) { dlgOpen(); clientSays(e, text, expr, () => h
 
 const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const hasStock = (id) => (S.storage[id] ?? 0) + (onDisplay(S).get(id) ?? 0) > 0;   // almacén o expuesto: lo último que se usa es el de la estantería
-const isUnfillable = (c) => !c.pickup && !c.parcel && (isUnknown(c) || (c.type === 'title' && !hasStock(c.target)));
+const isUnfillable = (c) => !c.pickup && !c.parcel && (isUnknown(c) || (c.type === 'title' && !hasStock(c.target)) || (c.multi && c.multi.wants.some((w) => w.kind === 'title' && !hasStock(w.id))));
 
 function talkOpt(id) {
   const e = attending;
@@ -1482,6 +1482,25 @@ function askEdition(id) {
   });
 }
 
+// Cliente que pide varios libros: cada libro que traes se comprueba contra lo que le falta; al completarlo se cobra todo junto
+async function multiPickBook(e, id) {
+  const r = multiTry(S, id);
+  if (r.error) { world.carry(world.hero, null); toast(r.error); busy = false; talking = true; talkAgain(e, e.c.line, 'dudosa'); return; }
+  await wait(450);
+  world.carry(world.hero, null);
+  if (r.ok && !r.done) {
+    persist();
+    busy = false; talking = true;
+    talkAgain(e, pickOne(['¡Ese sí!', 'Perfecto, ese es.', 'Eso es, gracias.']) + ' Me falta: ' + r.remaining.join(' y ') + '.', 'contenta');
+    return;
+  }
+  if (!r.ok && !r.left) { busy = false; talking = true; talkAgain(e, r.message, 'decepcionada'); return; }
+  const res = r.ok ? multiSell(S) : r;
+  if (res.error) { toast(res.error); busy = false; talking = true; talkAgain(e, e.c.line, 'dudosa'); return; }
+  persist(); renderTop(); syncWorld();
+  await finishCustomer(e, res, null);
+}
+
 async function pickBook(id) {
   if (!fetching) return;
   fetching = false;
@@ -1503,6 +1522,7 @@ async function pickBook(id) {
   }
   const e = attending;
   const bk = BOOK[id], cc = e.c;
+  if (cc.multi) { await multiPickBook(e, id); return; }
   const sc0 = evaluate(bk, cc), hesitate = sc0 === 1 && Math.random() < 0.5;
   const interested = sc0 >= 1 && !hesitate && !(cc.budget && bk.price > cc.budget);   // lo que va a decidir offer(): si no lo quiere, no se habla de ediciones ni de tapas
   const special = bk.ed && interested ? await editionTalk(e, id) : false;
@@ -1808,6 +1828,7 @@ function showPicker() {
   openSheet(`<div class="sheet-h"><h2>Estantería del almacén</h2></div>
     <div class="picker"><button type="button" class="btn wide ghost" data-act="cancelPick">‹ Volver sin libro</button>
     ${c.type === 'title' && !c.pickup && !hasStock(c.target) ? `<p class="warn">⚠ No te quedan ejemplares de «${esc(BOOK[c.target].title)}».</p>` : ''}
+    ${c.multi ? `<p class="warn" style="background:#fff3c4;color:#4a3a14">Pedido de ${c.multi.wants.length} libros: ${c.multi.wants.map((w, i) => (c.multi.got[i] != null ? `✓ ${esc(BOOK[c.multi.got[i]].title)}` : `☐ ${esc(w.text)}`)).join('  ·  ')}</p>` : ''}
     <p class="quote small">${esc(c.name)}: “${esc(c.line)}”</p>
     <p class="muted sub">Coge el libro que pide. Si te equivocas, el cliente te lo dirá.</p>
     ${stkToolsHTML()}

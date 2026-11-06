@@ -1,6 +1,6 @@
 import { addPts, initPass, TIERS, SEASON, tierOf, EDITIONS, applyEditions } from './pass.js';
 import { BOOKS, BOOK, GENRES, GENRE_ORDER, TAGS, wholesale, sectionOf, SAGAS } from './books.js';
-import { newCustomer, newUnfillable, pickChar, bookWeights, thanksLine, nopeLine, pickupCustomer, parcelCustomer, CAST, CAST_BY_ID } from './cast.js';
+import { newMulti, newCustomer, newUnfillable, pickChar, bookWeights, thanksLine, nopeLine, pickupCustomer, parcelCustomer, CAST, CAST_BY_ID } from './cast.js';
 import { FURN, placed, placementError, cellsOf, dims, EXPANSIONS, setBounds, seatSpots } from './layout.js';
 
 export const ROW_CAP = 8;
@@ -312,6 +312,16 @@ function randomRequest(s, bag) {
   const avail = availableBooks(s);
   const trendIds = new Set(s.trend.filter((t) => t.until >= s.day).map((t) => t.id));
   const char = pickChar(bag);
+  const r0 = Math.random();
+  if (s.level >= 2 && r0 < 0.11) { const m = newMulti(char, avail); if (m) return m; }   // se lleva varios libros
+  if (r0 < 0.21) {   // pide el segundo o tercer tomo de una saga: sale con frecuencia para que se pueda hablar de «¿te has leído el anterior?»
+    const seq = avail.filter((b) => b.saga && b.saga.n > 1);
+    if (seq.length) {
+      let c = null;
+      for (let i = 0; i < 8 && !(c && (c.sequel || c.unaware)); i++) c = newCustomer(char, pick(seq).id, 'title');
+      if (c) return c;
+    }
+  }
   const target = pick(bookWeights(char, avail, trendIds)).id;
   const r = Math.random();
   if (r < 0.16) return newUnfillable(char, target);   // pide algo que no existe en tu librería
@@ -829,6 +839,43 @@ export function offer(s, bookId, opts = {}) {
   if (c.pickup) { s.encargos = (s.encargos ?? []).filter((e) => e.uid !== c.encargoUid); s.rep += 1; s.followers += 1; }
   if (c.returnFor) { addEncargo(s, { charId: c.charId, name: c.name, person: c.person, target: c.returnFor }); s.rep += 1; }   // vuelve a por el siguiente tomo
   return { sold: true, special, format, score, price, tip, stars, review: post, reads, fetched: place.fetched, message: thanksLine(c) };
+}
+
+// Cliente de varios libros: ¿encaja el libro que traes con algo que aún le falta?
+export function multiTry(s, bookId) {
+  const c = s.current, m = c?.multi, book = BOOK[bookId];
+  if (!m || !book) return { error: 'No hay cliente.' };
+  const have = sellable(s), n = (have.get(bookId)?.shop ?? 0) + (have.get(bookId)?.store ?? 0);
+  if (n - m.got.filter((x) => x === bookId).length <= 0) return { error: 'Ya no te quedan más ejemplares de ese libro.' };
+  let k = m.wants.findIndex((w, i) => m.got[i] == null && w.kind === 'title' && w.id === bookId);
+  if (k < 0 && !m.got.includes(bookId)) k = m.wants.findIndex((w, i) => m.got[i] == null && w.kind === 'genre' && book.genre === w.genre);
+  if (k < 0) {
+    c.tries--;
+    if (c.tries <= 0) { s.today.left++; return { sold: false, score: 0, left: true, review: maybeReview(s, null, Math.random() < 0.6 ? 1 : 2), message: nopeLine(c) }; }
+    return { ok: false, left: false, message: nopeLine(c) + ' Recuerda lo que te he pedido.' };
+  }
+  m.got[k] = bookId;
+  const missing = m.wants.filter((w, i) => m.got[i] == null);
+  return { ok: true, done: !missing.length, remaining: missing.map((w) => w.text) };
+}
+// Cobra todos los libros del pedido de golpe
+export function multiSell(s) {
+  const c = s.current, m = c?.multi;
+  if (!m || m.got.some((x) => x == null)) return { error: 'Aún falta algún libro.' };
+  let price = 0, post = null;
+  for (const id of m.got) {
+    const bk = BOOK[id]; if (!takeCopy(s, id)) return { error: 'No te quedan todos los libros.' };
+    const trending = s.trend.some((t) => t.id === id && t.until >= s.day);
+    price += Math.round(bk.price * (trending ? 1.2 : 1));
+    s.soldBy ??= {}; s.soldBy[id] = (s.soldBy[id] ?? 0) + 1;
+    s.today.sales++; s.stats ??= { sold: 0, regulars: {} }; s.stats.sold++;
+    addPts(s, 10); gainXp(s, 12);
+    post = maybeReview(s, bk, 5) ?? post;
+  }
+  const tip = Math.round(price * 0.1 * Math.min(1, cozy(s) / 8) * 10) / 10;
+  s.money += price + tip; s.today.revenue += price; s.today.tips += tip; s.rep += 2 + m.got.length;
+  if (c.charId) { s.stats.regulars[c.charId] = true; s.stats.visits ??= {}; s.stats.visits[c.charId] = (s.stats.visits[c.charId] ?? 0) + 1; }
+  return { sold: true, score: 3, price, tip, stars: 5, review: post, reads: false, bundle: m.got.length, message: thanksLine(c) };
 }
 
 // Vender de golpe el primer tomo de una saga y los siguientes hasta el que pedía el cliente

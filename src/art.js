@@ -28,6 +28,19 @@ const MOTIFS = {
   llama: ([, , a, t]) => `<path d="M50 6 C60 28 80 38 74 62 C72 78 60 92 50 92 C38 92 26 80 26 62 C26 48 38 44 40 30 C46 40 48 26 50 6Z" fill="${a}"/><path d="M50 40 C56 54 64 60 60 72 C58 80 54 84 50 84 C44 84 40 78 40 70 C40 62 46 58 46 52 C48 56 50 50 50 40Z" fill="${t}" opacity=".85"/>`,
   anillo: ([, , a, t]) => `<circle cx="50" cy="50" r="30" fill="none" stroke="${a}" stroke-width="10"/><circle cx="50" cy="50" r="24" fill="none" stroke="${t}" stroke-width="1" opacity=".6"/>${Array.from({ length: 12 }, (_, i) => `<rect x="48.5" y="14" width="3" height="6" fill="${t}" transform="rotate(${i * 30} 50 50)" opacity=".8"/>`).join('')}`,
   espadas: ([, , a, t]) => [-48, -24, 0, 24, 48].map((d) => `<g transform="rotate(${d} 50 96)"><path d="M50 96 L46.5 26 L50 6 L53.5 26Z" fill="${d === 0 ? a : t}"/><rect x="43" y="74" width="14" height="3" fill="${a}"/></g>`).join(''),
+  // dos torres con almenas, unidas por un muro, y una luna roja entre ellas
+  atalayas: ([, , a, t]) => {
+    const tower = (x, top, w) => {
+      const cren = Array.from({ length: 4 }, (_, i) => '<rect x="' + (x - 3 + i * ((w + 6 - 4.2) / 3)) + '" y="' + (top - 7) + '" width="4.2" height="7" fill="' + t + '"/>').join('');
+      return '<rect x="' + x + '" y="' + top + '" width="' + w + '" height="' + (92 - top) + '" fill="' + t + '"/><rect x="' + (x - 3) + '" y="' + (top - 1) + '" width="' + (w + 6) + '" height="5" fill="' + t + '"/>' + cren
+        + '<path d="M' + (x + w / 2 - 3) + ' ' + (top + 24) + ' v10 a3 3 0 0 1 6 0 v-10 a3 3 0 0 0 -6 0z" fill="' + a + '"/>'
+        + '<rect x="' + (x + w / 2 - 1) + '" y="' + (top + 46) + '" width="2" height="7" fill="' + a + '"/>';
+    };
+    return '<circle cx="50" cy="26" r="11" fill="' + a + '" opacity=".9"/><circle cx="54" cy="23" r="10" fill="#17181b" opacity=".35"/>'
+      + '<rect x="30" y="64" width="40" height="28" fill="' + t + '" opacity=".75"/>'
+      + tower(14, 34, 18) + tower(68, 28, 18)
+      + '<path d="M44 92 v-12 a6 6 0 0 1 12 0 v12z" fill="' + a + '"/>';
+  },
   gafas: ([, , a, t]) => `<circle cx="32" cy="58" r="19" fill="none" stroke="${a}" stroke-width="5"/><circle cx="68" cy="58" r="19" fill="none" stroke="${a}" stroke-width="5"/><path d="M50 56 q0 -6 0 0" stroke="${a}" stroke-width="5"/><path d="M51 53 L49 53" stroke="${a}" stroke-width="5"/><path d="M62 4 L48 28 L57 28 L50 46 L70 22 L60 22Z" fill="${t}"/>`,
   viento: ([, , a, t]) => `<path d="M50 50 a4 4 0 0 1 8 0 a10 10 0 0 1 -20 0 a18 18 0 0 1 36 0 a26 26 0 0 1 -52 0 a34 34 0 0 1 68 0 a42 42 0 0 1 -84 0" stroke="${a}" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="50" cy="50" r="3" fill="${t}"/>`,
   niebla: ([, , a, t]) => `<circle cx="50" cy="26" r="11" fill="${t}"/>${[46, 58, 70, 82].map((y, i) => `<path d="M0 ${y} Q16 ${y - 8} 32 ${y} T64 ${y} T100 ${y} V${y + 8} H0Z" fill="${i % 2 ? a : t}" opacity="${0.75 - i * 0.12}"/>`).join('')}`,

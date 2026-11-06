@@ -1,6 +1,6 @@
 // Reparto de clientes habituales, su manera de hablar y el motor de conversación.
 // Cada personaje tiene el mismo aspecto en 3D y en la guía de retratos (libreria/arte/guia-retratos.md).
-import { BOOK, BOOKS, TAGS, GENRES } from './books.js';
+import { BOOK, BOOKS, TAGS, GENRES, SAGAS } from './books.js';
 
 const WHO = ['mi sobrina', 'mi madre', 'mi mejor amigo', 'mi pareja', 'un compañero de trabajo', 'mi abuelo', 'mi hermana pequeña', 'una vecina', 'mi jefa', 'mi primo'];
 const TRIP = ['Me voy de viaje y necesito algo que me enganche.', 'Tengo un tren larguísimo por delante.', 'Son mis vacaciones y quiero devorar algo.', 'Me voy a la playa esta semana.'];
@@ -474,6 +474,12 @@ export function playerOptions(c, ctx = {}) {
     ];
   }
   if (c.parcel) return [{ id: 'give', text: 'Aquí tienes tu pedido, bien empaquetado.' }];
+  if (c.multi) {
+    const out = [];
+    if (ctx.pc && !c.talk.pcChecked) out.push({ id: 'pc', text: 'Espérate, que lo miro en el ordenador.' });
+    out.push({ id: 'go', text: c.multi.got.some((x) => x != null) ? 'Voy a por lo que falta.' : 'Voy al almacén a buscarlo todo.' });
+    return out;
+  }
   if (c.type === 'title') {
     const checked = !ctx.pc || c.talk.pcChecked;   // hasta que mires el ordenador (o vayas al almacén) no sabes si lo tienes
     if (ctx.have && checked && !ctx.have(c.target)) {
@@ -487,7 +493,7 @@ export function playerOptions(c, ctx = {}) {
     const b0 = BOOK[c.target], out = [];
     if (b0.saga && b0.saga.n > 1 && !c.sequel && !c.pickup && !c.returnFor && !c.talk.asked.includes('prev')) out.push({ id: 'prev', text: '¿Te has leído el anterior de la saga?' });
     if (ctx.pc && !c.talk.pcChecked) out.push({ id: 'pc', text: 'Espérate, que lo miro en el ordenador.' });
-    if (c.talk.prevAsked && c.unaware && !c.returnFor && b0.saga && checked) {
+    if (c.talk.prevAsked && c.unaware && !c.returnFor && b0.saga) {
       const first = firstOfSaga(b0), sg = BOOKS.filter((x) => x.saga?.id === b0.saga.id && x.saga.n <= b0.saga.n);
       if (!ctx.have || ctx.have(first.id)) out.push({ id: 'givefirst', text: `Empieza por el primero, «${first.title}», y cuando lo leas vuelves a por este.` });
       if (ctx.have && sg.every((x) => ctx.have(x.id))) out.push({ id: 'bundle', text: b0.saga.n === 2 ? 'Llévate el primero y el segundo juntos.' : `Llévate los ${sg.length} primeros tomos juntos.` });
@@ -565,6 +571,34 @@ export function answer(c, optId) {
 export const sorryLine = (c) => pick(['Vaya, qué pena. Gracias igualmente.', 'Ay, qué lástima. Otro día será.', 'No pasa nada, gracias por decírmelo.']);
 export const thanksLine = (c) => pick(voiceOf(c).thanks);
 export const nopeLine = (c) => pick(voiceOf(c).nope);
+
+// Cliente que se lleva varios libros: una saga entera, dos títulos concretos o un libro de cada uno de dos géneros
+export function newMulti(char, avail) {
+  const have = new Set(avail.map((b) => b.id));
+  const sagas = SAGAS.filter((sg) => sg.ids.every((id) => have.has(id)));
+  const genres = [...new Set(avail.map((b) => b.genre))].filter((g) => GENRES[g]);
+  const kinds = [...(sagas.length ? ['saga', 'saga'] : []), ...(avail.length >= 2 ? ['pair', 'pair'] : []), ...(genres.length >= 2 ? ['genres', 'genres'] : [])];
+  if (!kinds.length) return null;
+  const kind = pick(kinds);
+  const list = (arr) => (arr.length > 1 ? arr.slice(0, -1).join(', ') + ' y ' + arr[arr.length - 1] : arr[0]);
+  const lab = (g) => GENRES[g].label.toLowerCase();
+  let wants, text;
+  if (kind === 'saga') {
+    const sg = pick(sagas);
+    wants = sg.ids.map((id) => ({ kind: 'title', id, text: '«' + BOOK[id].title + '»' }));
+    text = pick(['Quiero la saga entera: ' + list(wants.map((w) => w.text)) + '.', 'Vengo a por los ' + wants.length + ' tomos: ' + list(wants.map((w) => w.text)) + '. ¿Los tenéis todos?', 'Me he enganchado y quiero la saga completa: ' + list(wants.map((w) => w.text)) + '.']);
+  } else if (kind === 'pair') {
+    const two = shuffle(avail.slice()).slice(0, 2);
+    wants = two.map((b) => ({ kind: 'title', id: b.id, text: '«' + b.title + '»' }));
+    text = pick(['Quiero estos dos: ' + list(wants.map((w) => w.text)) + '.', 'Me llevo ' + list(wants.map((w) => w.text)) + ', los dos.']);
+  } else {
+    const two = shuffle(genres.slice()).slice(0, 2);
+    wants = two.map((g) => ({ kind: 'genre', genre: g, text: 'uno de ' + lab(g) }));
+    text = pick(['Quiero dos libros: uno de ' + lab(two[0]) + ' y otro de ' + lab(two[1]) + '.', 'Necesito un libro de ' + lab(two[0]) + ' y uno de ' + lab(two[1]) + '.']);
+  }
+  const v = char.voice ?? { intro: [''] };
+  return { charId: char.id, name: char.name, person: char.look, type: 'multi', target: null, genre: null, bookId: null, tries: 3, talk: { asked: [] }, revealed: [], tags: [], multi: { wants, got: [] }, line: (pick(v.intro) + ' ' + text).trim() };
+}
 
 export function newCustomer(char, target, type) {
   const b = BOOK[target];
