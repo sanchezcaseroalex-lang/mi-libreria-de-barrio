@@ -21,6 +21,24 @@
 </script>
 </head>
 <body class="g3d">
+<!-- Logo del estudio: se enseña unos segundos al abrir el juego. Si no existe arte/logo/estudio.png, no sale nada. -->
+<div id="studio" class="studio" hidden><img alt="" src="arte/logo/estudio.png"></div>
+<script>
+(function () {
+  var box = document.getElementById('studio'), im = box.querySelector('img');
+  var KEY = 'libreria.studioSeen';
+  var done = false;
+  function show() {
+    if (done) return; done = true;
+    box.hidden = false;
+    requestAnimationFrame(function () { requestAnimationFrame(function () { box.classList.add('on'); }); });
+    setTimeout(function () { box.classList.remove('on'); setTimeout(function () { box.remove(); }, 600); }, 2300);
+  }
+  im.addEventListener('load', show);
+  im.addEventListener('error', function () { box.remove(); });
+  if (im.complete) { if (im.naturalWidth) show(); else box.remove(); }   // ya estaba en caché
+})();
+</script>
 <div id="loading" class="ld" data-kind="boot">
   <div class="ld-art">
     <img alt="" src="arte/pantallas/carga.jpg">

@@ -8,13 +8,13 @@ import {
   newGame, ITEMS, NETWORKS, XP_LEVELS, availableBooks, cozy, storageCount, shelfFree, shelfSlots, containers, furnById,
   inventory, countOf, buyFurniture, placeFurniture, storeFurniture, rotateFurniture, placeBook, takeBack, autoPlace, onDisplay, sellable, buyItem,
   orderBooks, pendingOrders, openShop, offer, dismiss, nextCustomer, nextDay, createAccount, canPost, postPhoto, postVideo,
-  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, canVideo, makeVideo, canGift, giveGift, giftStock, discardFurniture, nudgeFurniture, pruneWindow, setWindow, windowFilled, windowBoost, WIN_SLOTS, windowOwned, directSale, LOANS, LOAN_LEVEL, loanInfo, takeLoan, repayLoan, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
+  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, canVideo, makeVideo, canGift, giveGift, giftStock, discardFurniture, nudgeFurniture, pruneWindow, setWindow, KEEPSAKES, windowFilled, windowBoost, WIN_SLOTS, windowOwned, directSale, LOANS, LOAN_LEVEL, loanInfo, takeLoan, repayLoan, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
 } from './game.js';
 import { genderize, setHeroGender, newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
 import { HERO_LOOK } from './people3d.js';
 import { runOpenBox, runPackBox } from './boxscene.js';
 import { initAudio, setVolumes, sfx, blip, startMusic, isMusicPlaying } from './audio.js';
-import { CHAPTERS, ANSELMO_WELCOME, initStory, currentChapter, chapterProgress, completeChapter, SEASON_STORIES, currentSeasonChapter, completeSeasonChapter, seasonChapterIdx } from './story.js';
+import { CHAPTERS, ANSELMO_WELCOME, initStory, currentChapter, chapterProgress, completeChapter, grantKeepsakes, SEASON_STORIES, currentSeasonChapter, completeSeasonChapter, seasonChapterIdx } from './story.js';
 import { createWorld, ARTS, POSTER_SIZES, ROT_Y, STORE_INFO } from './world.js';
 import { FLOORS, WALLS, clearBookCaches } from './kit3d.js';
 import { SEASON, SEASONS, TIERS, EDITIONS, SKINS, skinName, initPass, tierOf, claimable, applyEditions, activateSeason, seasonDaysLeft, seasonEnd, STUDIO } from './pass.js';
@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.34.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.35.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -48,6 +48,7 @@ function prepare(s) {
   activateSeason(new Date(), s.testSeason); initStory(s); initPass(s); s.doormat ??= 'Bienvenid@s'; s.encargos ??= []; s.web ??= { orders: [], n: 1 }; if (s.phase === 'morning') s.nooks = [];
   s.msgs ??= []; s.nooks ??= (s.nook ? [{ person: s.nook.person, bookId: s.nook.bookId }] : []); s.goods ??= {}; s.missedGoods ??= {}; s.ratings ??= {}; s.album ??= []; s.notes ??= '';
   clearBookCaches(applyEditions(s));
+  grantKeepsakes(s);
   if (s.introSeen == null) s.introSeen = !!s.hero;
   if (s.tut == null && s.hero) s.tut = { i: 999 };
   if (s.phase === 'serving') { s.phase = 'morning'; s.current = null; s.served = 0; s.idx = 0; s.queue.forEach((c) => { c.tries = 2; c.talk = { asked: [] }; }); }
@@ -863,7 +864,7 @@ async function maybeStory() {
     step(0);
   });
   closeDialog();
-  toast(`Capítulo ${who === 'anselmo' ? S.story.chapter : ch.index}: «${ch.title}» completado · +${ch.reward} €${ch.studio ? ' · Trípode instalado en el almacén' : ''}`);
+  toast(`Capítulo ${who === 'anselmo' ? S.story.chapter : ch.index}: «${ch.title}» completado${ch.reward ? ` · +${ch.reward} €` : ''}${ch.studio ? ' · Trípode instalado en el almacén' : ''}${ch.keepsake ? ' · Te llevas «El libro sin título»: ponlo en el escaparate' : ''}`);
   if (ch.studio) syncWorld();
   storyBusy = false; busy = false;
   renderPanel();
@@ -1846,7 +1847,7 @@ function windowSheet(uidv) {
 }
 function winItemsHTML(uidv, i) {
   const q = norm(STK.q);
-  const goods = GOODS.filter((g) => (S.goods?.[g.id] ?? 0) > 0 && (!q || norm(g.name).includes(q))).map((g) => `<button type="button" class="wi-it" data-act="winPut" data-uid="${uidv}" data-i="${i}" data-key="g:${g.id}"><span class="wi">${gicon(g)}</span><b>${esc(g.name)}</b><small>tienes ${S.goods[g.id]}</small></button>`).join('');
+  const goods = [...GOODS, ...KEEPSAKES].filter((g) => (S.goods?.[g.id] ?? 0) > 0 && (!q || norm(g.name).includes(q))).map((g) => `<button type="button" class="wi-it" data-act="winPut" data-uid="${uidv}" data-i="${i}" data-key="g:${g.id}"><span class="wi">${gicon(g)}</span><b>${esc(g.name)}</b><small>tienes ${S.goods[g.id]}</small></button>`).join('');
   const have = sellable(S);
   const ids = stkApply(BOOKS.filter((b) => ((have.get(b.id)?.shop ?? 0) + (have.get(b.id)?.store ?? 0)) > 0).map((b) => b.id));
   const books = ids.map((id) => `<button type="button" class="wi-it" data-act="winPut" data-uid="${uidv}" data-i="${i}" data-key="b:${id}">${coverSVG(BOOK[id], 40, 60)}<b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small></button>`).join('');
@@ -2322,9 +2323,10 @@ const camItemsHTML = () => {
   return goods + books || '<p class="empty">No tienes nada que fotografiar todavía.</p>';
 };
 // Icono de un complemento: su ilustración si la tiene (arte/objetos/recortes), si no el emoji
-const GOOD_IMG = { marcapaginas: 'marcapaginas', libreta: 'libreta', vela: 'vela', tote: 'totebag', poster: 'poster', fig_dragon: 'dragon', fig_gato: 'gato', fig_buho: 'buho', fig_mago: 'maho', er_luma: 'e-reader', er_tinta: 'e-reader', er_pagina: 'e-reader', er_aurora: 'e-reader' };
-const gicon = (g) => (g && GOOD_IMG[g.id] ? `<img class="gimg" src="arte/objetos/recortes/${GOOD_IMG[g.id]}.png" alt="" loading="lazy" draggable="false">` : (g?.emoji ?? '📦'));
-const ALL_GOODS_LIST = () => [...GOODS, ...EREADERS];
+const GOOD_IMG = { libro_anselmo: 'libreta', marcapaginas: 'marcapaginas', libreta: 'libreta', vela: 'vela', tote: 'totebag', poster: 'poster', fig_dragon: 'dragon', fig_gato: 'gato', fig_buho: 'buho', fig_mago: 'maho', er_luma: 'e-reader', er_tinta: 'e-reader', er_pagina: 'e-reader', er_aurora: 'e-reader' };
+const BOOK_ICON = '<svg viewBox="0 0 40 52" width="100%" height="100%" aria-hidden="true"><rect x="6" y="3" width="28" height="44" rx="3" fill="#2f5a45" stroke="#173a2c" stroke-width="2"/><rect x="10" y="7" width="20" height="36" rx="1.5" fill="none" stroke="#d9b24a" stroke-width="1.4"/><path d="M14 19h12M14 24h12M16 31h8" stroke="#e8cf7a" stroke-width="2" stroke-linecap="round"/><path d="M30 3v18l-2.5-2-2.5 2V3z" fill="#c0392b"/></svg>';
+const gicon = (g) => (g?.id === 'libro_anselmo' ? BOOK_ICON : g && GOOD_IMG[g.id] ? `<img class="gimg" src="arte/objetos/recortes/${GOOD_IMG[g.id]}.png" alt="" loading="lazy" draggable="false">` : (g?.emoji ?? '📦'));
+const ALL_GOODS_LIST = () => [...GOODS, ...EREADERS, ...KEEPSAKES];
 
 function appCamara() {
   const album = S.album ?? [];

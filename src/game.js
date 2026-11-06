@@ -409,7 +409,9 @@ export const EREADERS = [
   { id: 'er_pagina', name: 'Página Pro', one: 'un Página Pro', price: 150, cost: 70, color: '#2a2a2e', emoji: '📱' },
   { id: 'er_aurora', name: 'Aurora Max', one: 'un Aurora Max', price: 189, cost: 90, color: '#3a6aa5', emoji: '📱' },
 ];
-export const ALL_GOODS = [...GOODS, ...EREADERS];
+// Recuerdos: no se venden ni se piden; se exponen en el escaparate
+export const KEEPSAKES = [{ id: 'libro_anselmo', name: 'El libro sin título', one: 'el libro sin título', price: 0, cost: 0, level: 1, emoji: '📖', keepsake: true }];
+export const ALL_GOODS = [...GOODS, ...EREADERS, ...KEEPSAKES];
 export const GOOD = Object.fromEntries(ALL_GOODS.map((g) => [g.id, g]));
 /* ---------- Escaparate: huecos libres; lo que pones no se gasta, pero tienes que tenerlo ---------- */
 

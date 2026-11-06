@@ -40,13 +40,14 @@ export const CHAPTERS = [
     clue: 'Lo que más vale se regala.',
   },
   {
-    title: 'El libro sin título', goal: 'Llega al nivel 10', target: 10, value: (s) => s.level, reward: 500, final: true,
+    title: 'El libro sin título', goal: 'Llega al nivel 10', target: 10, value: (s) => s.level, reward: 0, final: true, keepsake: 'libro_anselmo',
     lines: [
       'Lo has conseguido. Nivel 10. Ven, siéntate un momento.',
       'Verás… el libro que escondí no está en ningún estante. Estaba en mis manos desde el primer día: es este cuaderno.',
       'Lo llamo «El libro sin título». Dentro apunté, año tras año, a todos los que cruzaron esa puerta: quiénes eran, qué leyeron, qué les cambió.',
       'Las últimas páginas están en blanco. Son tuyas. Las historias de la librería no acaban conmigo: las seguís escribiendo vosotros.',
       'Gracias por quedarte, {n}. {shop} es tuya… y del barrio. Ah, y la primera línea de tu página ya la he escrito yo: «{n} abrió la persiana».',
+      'Quédate el cuaderno. Es tuyo, con tu nombre en la tapa. Ponlo en el escaparate, para que todo el barrio sepa de quién es esta librería.',
     ],
     clue: 'El libro sin título: un cuaderno con la memoria del barrio, y páginas en blanco para ti.',
   },
@@ -94,6 +95,8 @@ export function completeSeasonChapter(s, id) {
   return { ...c, who: st.who, whoName: st.whoName, index: seasonChapterIdx(s, id) };
 }
 
+// Si la historia ya estaba terminada antes de existir el recuerdo, se entrega al cargar la partida
+export function grantKeepsakes(s) { if ((s.story?.chapter ?? 0) >= CHAPTERS.length) { s.goods ??= {}; if (!s.goods.libro_anselmo) s.goods.libro_anselmo = 1; } }
 export const initStory = (s) => { s.story ??= { chapter: 0, clues: [] }; s.stats ??= { sold: 0, regulars: {} }; };
 export const currentChapter = (s) => CHAPTERS[s.story.chapter] ?? null;
 export const chapterProgress = (s) => { const c = currentChapter(s); return c ? { value: Math.min(c.target, c.value(s)), target: c.target } : null; };
@@ -105,6 +108,7 @@ export function completeChapter(s) {
   s.story.chapter++;
   addPts(s, 40);
   s.story.clues.push(c.clue);
+  if (c.keepsake) { s.goods ??= {}; s.goods[c.keepsake] = 1; }   // recuerdo del final: se puede exponer en el escaparate
   s.money = Math.round((s.money + c.reward) * 100) / 100;
   return c;
 }
@@ -112,6 +116,7 @@ export function completeChapter(s) {
 export const ANSELMO_WELCOME = [
   ['Buenos días… ¿{n}? Pasa, pasa, no te quedes en la puerta.', 'neutra'],
   ['Llevo cuarenta años levantando esa persiana. Hoy, por fin, la levantas tú.', 'contenta'],
+  ['Sé que te gustaría tener tu propia librería en la vida real, pero de momento te presto la mía.', 'contenta'],
   ['Esta es {shop}. No es la librería más grande del barrio, pero sí la más querida: aquí cada libro espera a su lector.', 'neutra'],
   ['Ha llegado mi hora de retirarme y de dedicarme a pasear, leer sin prisa y cotillear un poco. Así que te traspaso el local. No me debes nada. Solo prométeme que recomendarás libros con el corazón.', 'neutra'],
   ['Una cosa más… Hace años escondí en esta librería un libro que nunca vendí. No te diré cuál ni dónde, pero cada vez que la tienda crezca, te dejaré una pista.', 'dudosa'],

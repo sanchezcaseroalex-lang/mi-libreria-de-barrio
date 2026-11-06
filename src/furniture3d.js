@@ -356,6 +356,8 @@ function doorway() {
 
 /* ---------- Escaparate y sus artículos ---------- */
 
+// Textos de la tapa del libro personalizado de Don Anselmo (los pone el mundo desde la partida)
+export const PERSONAL = { shop: '', hero: '' };
 export function itemMesh(key) {
   const g = new THREE.Group(), [kind, id] = key.split(':');
   if (kind === 'b') { const bk = displayBook(BOOK[id], .2, .3, .04); bk.rotation.x = -.12; g.add(bk); return g; }
@@ -376,6 +378,21 @@ export function itemMesh(key) {
         [-1, 0, 1].forEach((s) => { const th = cyl(.0015, .0015, .035, M(['#e8a0b0', '#e3b04b', '#c8452a'][i], .8), 5); th.position.set(s * .004, .162, 0); bm.add(th); });
         bm.position.set((i - 1) * .055, 0, (i - 1) * .006); bm.rotation.set(-.12 + i * .05, (i - 1) * .22, (i - 1) * .1); g.add(bm);
       });
+    } break;
+    case 'libro_anselmo': {
+      const tx = canvasTex(256, 360, (c, w2, h2) => {
+        const gr = c.createLinearGradient(0, 0, w2, h2); gr.addColorStop(0, '#2f5a45'); gr.addColorStop(1, '#173a2c'); c.fillStyle = gr; c.fillRect(0, 0, w2, h2);
+        c.strokeStyle = '#d9b24a'; c.lineWidth = 5; c.strokeRect(16, 16, w2 - 32, h2 - 32); c.lineWidth = 2; c.strokeRect(26, 26, w2 - 52, h2 - 52);
+        c.fillStyle = '#e8cf7a'; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.font = '700 30px Fraunces, serif'; c.fillText('El libro', w2 / 2, 112); c.fillText('sin título', w2 / 2, 152);
+        c.fillRect(w2 / 2 - 40, 186, 80, 2);
+        c.font = '600 20px Fraunces, serif'; c.fillText(String(PERSONAL.shop || '').slice(0, 22), w2 / 2, 226);
+        c.font = 'italic 600 18px Fraunces, serif'; c.fillText(String(PERSONAL.hero || '').slice(0, 20), w2 / 2, 262);
+      });
+      const body = box(.16, .23, .036, M('#f3e7c9', .9), .004); body.position.y = .115; g.add(body);
+      const cv = new THREE.Mesh(new THREE.PlaneGeometry(.158, .228), new THREE.MeshStandardMaterial({ map: tx, roughness: .55 })); cv.position.set(0, .115, .0185); g.add(cv);
+      boxAt(g, .008, .23, .04, M('#d9b24a', .5, .6), -.07, 0, 0, .001);
+      boxAt(g, .008, .09, .002, M('#c0392b', .7), .058, -.03, .0195, .0005);
     } break;
     case 'libreta': boxAt(g, .14, .19, .022, M('#c8566b', .7), 0, 0, 0, .004); boxAt(g, .012, .19, .024, M('#2a2a2a', .6), .045, 0, 0, .001); break;
     case 'vela': cylAt(g, .045, .045, .1, M('#f3e7c9', .8), 0, 0, 0, 16); cylAt(g, .004, .004, .02, M('#2a2a2a', .6), 0, .1, 0, 6); { const fl = sph(.011, MG('#ffcf6b', 1.6), 1, 1.6, 1); fl.position.set(0, .13, 0); g.add(fl); } break;

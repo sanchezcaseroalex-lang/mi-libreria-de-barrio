@@ -3,7 +3,7 @@ import {
   THREE, M, MT, MG, mWalnut, mOak, mPine, mDark, mBrass, mPage, canvasTex, floorTex, wallTex, FLOORS, WALLS,
   box, boxAt, cyl, cylAt, sph, shade, disposeTree, hashStr, mulberry32, contactShadow, displayBook, lyingBook, coverTexture, spineBook,
 } from './kit3d.js';
-import { buildFurniture, itemMesh } from './furniture3d.js';
+import { buildFurniture, itemMesh, PERSONAL } from './furniture3d.js';
 import { buildTown } from './town3d.js';
 import { makeVan } from './van3d.js';
 import { makePerson, animatePerson, sitPerson, HERO_LOOK } from './people3d.js';
@@ -809,7 +809,8 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       if (time) { timeState = time; applyTime(); }
       const sk = JSON.stringify([B, S.deco, !!S.owned?.lights, SEASON.banner === 'NAVIDAD', S.shopName, S.doormat]);
       if (sk !== keys.shell) { keys.shell = sk; buildShell(); keys.furn = ''; }
-      const fk = JSON.stringify([S.furniture, S.pass?.editions]);
+      PERSONAL.shop = S.shopName ?? ''; PERSONAL.hero = S.hero?.name ?? '';
+      const fk = JSON.stringify([S.furniture, S.pass?.editions, PERSONAL.shop, PERSONAL.hero]);
       if (fk !== keys.furn) { keys.furn = fk; buildFurn(); keys.nook = ''; }
       const nk = JSON.stringify([S.nooks, fk]);
       if (nk !== keys.nook) { keys.nook = nk; syncNook(); }

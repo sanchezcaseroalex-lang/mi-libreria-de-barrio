@@ -266,8 +266,8 @@ export function buildTown(shopName) {
   [[-15, 22], [15, 22], [-34, 6], [34, 6]].forEach(([x, z]) => group.add(tree(x, z, 1.1)));
   // árboles lejanos para que no se vea el borde del mundo
   for (let i = 0; i < 90; i++) { const x = -72 + rnd() * 144, z = -48 + rnd() * 96; if (Math.abs(x) < 38 && z > -26 && z < 26) continue; group.add(tree(x, z, .9 + rnd() * .8)); }
-  // coches aparcados, buzones y papeleras
-  [[-21, 1.1, 0, '#c8566b'], [-5, 1.1, 0, '#3a5a8a'], [24, 1.1, 0, '#e0a93b'], [-26, -1.1, Math.PI, '#5c9457'], [6, -1.1, Math.PI, '#e8e0d0'], [19, -1.1, Math.PI, '#7a4aa6']].forEach(([x, z, ry, col]) => group.add(car(x, z, ry, col)));
+  // coches aparcados (solo en el carril de arriba: el camión de Rodeos usa el de abajo), buzones y papeleras
+  [[-21, 1.1, 0, '#c8566b'], [-5, 1.1, 0, '#3a5a8a'], [24, 1.1, 0, '#e0a93b']].forEach(([x, z, ry, col]) => group.add(car(x, z, ry, col)));
   [[-3.4, -3.2], [7.5, -3.2], [-18, -3.2]].forEach(([x, z]) => group.add(mailbox(x, z)));
   [[11.5, -3.3], [-12.2, -3.3], [-24, -3.3]].forEach(([x, z]) => group.add(bin(x, z)));
   // luz cálida del escaparate
