@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.39.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.40.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -1571,19 +1571,24 @@ async function finishCustomer(e, r, id) {
   updateLine();
   persist();
   renderTop();
-  if (r.reads && chair && id) {
-    { const nk = (S.nooks ?? [])[(S.nooks ?? []).length - 1]; if (nk) { nk.person = p.userData.look; nk.bookId = id; } }
-    const pass = makePassable(blockedSet(S.furniture));
-    const pts = routePoints(pass, { x: p.position.x, z: p.position.z }, seatCell(chair, S.furniture));
-    if (pts) await world.walkRoute(p, pts, 2.2, (x, z) => pass(Math.floor(x), Math.floor(z)));
-    world.removePerson(p);
-    syncWorld();
-  } else {
-    await exitShop(e);
-  }
-  e.finish?.();
+  // el cliente se va (a la calle o a su sillón) por su cuenta: no bloquea al siguiente, que ya puede hablar contigo
+  const leaving = (async () => {
+    if (r.reads && chair && id) {
+      { const nk = (S.nooks ?? [])[(S.nooks ?? []).length - 1]; if (nk) { nk.person = p.userData.look; nk.bookId = id; } }
+      const pass = makePassable(blockedSet(S.furniture));
+      const pts = routePoints(pass, { x: p.position.x, z: p.position.z }, seatCell(chair, S.furniture));
+      if (pts) await world.walkRoute(p, pts, 2.2, (x, z) => pass(Math.floor(x), Math.floor(z)));
+      world.removePerson(p);
+      syncWorld();
+    } else {
+      await exitShop(e);
+    }
+    e.finish?.();
+  })();
   busy = false;
+  renderPanel();
   await showLevelUps();
+  if (S.phase === 'evening') await leaving;   // al acabar el día, se espera a que salga el último antes del resumen
   if (S.phase === 'evening' && S.day === 0) { S.phase = 'morning'; S.queue = []; dispersal(); syncWorld(); renderPanel(); return; }
   if (S.phase === 'evening') { dispersal(); syncWorld(); renderPanel(); toast('Ya no quedan clientes. Cierra la tienda cuando termines.'); return; }
   renderPanel();
