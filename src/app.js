@@ -10,7 +10,7 @@ import {
   orderBooks, pendingOrders, openShop, offer, dismiss, nextCustomer, nextDay, createAccount, canPost, postPhoto, postVideo,
   setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, canVideo, makeVideo, canGift, giveGift, giftStock, discardFurniture, nudgeFurniture, pruneWindow, setWindow, KEEPSAKES, windowFilled, windowBoost, WIN_SLOTS, windowOwned, directSale, LOANS, LOAN_LEVEL, loanInfo, takeLoan, repayLoan, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
 } from './game.js';
-import { genderize, setHeroGender, newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
+import { CAST, genderize, setHeroGender, newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
 import { HERO_LOOK } from './people3d.js';
 import { runOpenBox, runPackBox } from './boxscene.js';
 import { initAudio, setVolumes, sfx, blip, startMusic, isMusicPlaying } from './audio.js';
@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.40.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.41.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -539,7 +539,7 @@ async function directBuy(e, tok) {
   if (tok !== dayTok) return;
   world.carry(e.p, id);
   // se convierte en un cliente más de la cola (marcado como «directo»)
-  e.c = { direct: true, charId: 'cliente', name: 'Cliente', type: 'direct', bookId: id, person: e.p.userData.look, talk: { asked: [] }, line: `Me llevo «${BOOK[id].title}».` };
+  e.c = { direct: true, charId: e.known?.id ?? 'cliente', name: e.known?.name ?? 'Cliente', type: 'direct', bookId: id, person: e.p.userData.look, talk: { asked: [] }, line: `Me llevo «${BOOK[id].title}».` };
   e.bust = world.portrait(e.p.userData.look);
   e.ambient = false;
   while (line.length >= Math.max(1, lineCells().length) && tok === dayTok && S.phase === 'serving') await sleep(1000);
@@ -596,7 +596,7 @@ async function runShopper(e, tok) {
     } else {
       free();
       if (e.ambient && tok === dayTok && sitCell() && Math.random() < 0.3 && (await goRead(e, tok))) return;
-      if (e.ambient && tok === dayTok && S.level >= 2 && Math.random() < 0.55) await directBuy(e, tok);
+      if (e.known && tok === dayTok && S.level >= 2 && Math.random() < 0.9) await directBuy(e, tok);   // solo los vecinos conocidos cogen un libro para pagar
       await exitShop(e);
     }
   } finally {
@@ -606,10 +606,18 @@ async function runShopper(e, tok) {
   }
 }
 
+// Un vecino conocido (con retrato y nombre) que hoy no esté ya en la tienda, en la cola ni en la lista del día
+function knownNeighbour() {
+  const used = new Set([...(S.queue ?? []).map((c) => c.charId), ...[...crowd].map((x) => x.charId), ...line.map((x) => x.c?.charId)].filter(Boolean));
+  const pool = CAST.filter((c) => !c.story && c.id !== 'anselmo' && !used.has(c.id));
+  return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+}
+
 function spawnShopper(item, tok) {
-  const look = item.c ? item.c.person : ambientLook([...CAST_LOOKS, ...[...crowd].map((e) => e.p.userData.look)]);
+  const known = !item.c && S.level >= 2 && Math.random() < 0.6 ? knownNeighbour() : null;
+  const look = item.c ? item.c.person : known ? known.look : ambientLook([...CAST_LOOKS, ...[...crowd].map((e) => e.p.userData.look)]);
   const p = world.spawn(look, entryCell(), Math.PI, !!item.c);
-  const e = { p, c: item.c, ambient: !item.c, bust: null, charId: item.c?.charId, fast: !!item.fast };
+  const e = { p, c: item.c, ambient: !item.c, bust: null, charId: item.c?.charId ?? known?.id, known, fast: !!item.fast };
   if (item.c) e.bust = world.portrait(look);
   runShopper(e, tok);
 }
