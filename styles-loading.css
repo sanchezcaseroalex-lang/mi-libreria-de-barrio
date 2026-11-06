@@ -81,4 +81,4 @@
 .studio { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; background: #f6f5ee; opacity: 0; transition: opacity .6s ease; }
 .studio.on { opacity: 1; }
 .studio[hidden] { display: none; }
-.studio img { max-width: 62vw; max-height: 42vh; object-fit: contain; display: block; }
+.studio img { position: absolute; left: 50%; top: 46%; width: 58vw; transform: translate(-50%, -50%); display: block; }   /* mismo tamaño y sitio que la pantalla de arranque del iPhone (arte/splash) */
