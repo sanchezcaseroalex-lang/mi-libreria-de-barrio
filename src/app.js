@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.30.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.31.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -823,15 +823,16 @@ function checkSeason() {
   toast(`¡Empieza la ${SEASON.name}: «${SEASON.title}»!`);
 }
 
-// Recompensa por entrar cada día: ciclo de 7 días (si te saltas un día, sigues donde ibas)
+// Recompensa por entrar cada día: ciclo de 7 días (si te saltas un día, vuelve al día 1)
 const DAILY = [{ money: 30 }, { xp: 40 }, { money: 50 }, { xp: 60 }, { money: 80 }, { xp: 100 }, { money: 200, xp: 100 }];
-const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const todayKey = (back = 0) => { const d = new Date(); d.setDate(d.getDate() - back); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const dailyTxt = (r) => [r.money ? `${r.money} €` : '', r.xp ? `${r.xp} XP` : ''].filter(Boolean).join(' + ');
 async function maybeDaily() {
   S.daily ??= { last: '', day: 0 };
   const today = todayKey();
   if (S.daily.last === today) return;
-  S.daily.last = today; S.daily.day = (S.daily.day % 7) + 1;
+  const streak = S.daily.last === todayKey(1);   // entraste ayer: sigue la racha; si no, vuelve al día 1
+  S.daily.last = today; S.daily.day = streak ? (S.daily.day % 7) + 1 : 1;
   const day = S.daily.day, rw = DAILY[day - 1];
   storyBusy = true; busy = true;
   if (rw.money) S.money = Math.round((S.money + rw.money) * 100) / 100;
