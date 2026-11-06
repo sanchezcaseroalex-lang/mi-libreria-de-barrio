@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.31.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.32.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -1830,7 +1830,7 @@ async function viewWindowOutside(uidv) {
 function winCell(key) {
   if (!key) return '<span class="wplus">+</span>';
   const [k, id] = key.split(':');
-  return k === 'b' ? coverSVG(BOOK[id], 38, 57) : `<span class="wi">${GOOD[id]?.emoji ?? '📦'}</span>`;
+  return k === 'b' ? coverSVG(BOOK[id], 38, 57) : `<span class="wi">${gicon(GOOD[id])}</span>`;
 }
 function windowSheet(uidv) {
   const f = furnById(S, uidv);
@@ -1846,7 +1846,7 @@ function windowSheet(uidv) {
 }
 function winItemsHTML(uidv, i) {
   const q = norm(STK.q);
-  const goods = GOODS.filter((g) => (S.goods?.[g.id] ?? 0) > 0 && (!q || norm(g.name).includes(q))).map((g) => `<button type="button" class="wi-it" data-act="winPut" data-uid="${uidv}" data-i="${i}" data-key="g:${g.id}"><span class="wi">${g.emoji}</span><b>${esc(g.name)}</b><small>tienes ${S.goods[g.id]}</small></button>`).join('');
+  const goods = GOODS.filter((g) => (S.goods?.[g.id] ?? 0) > 0 && (!q || norm(g.name).includes(q))).map((g) => `<button type="button" class="wi-it" data-act="winPut" data-uid="${uidv}" data-i="${i}" data-key="g:${g.id}"><span class="wi">${gicon(g)}</span><b>${esc(g.name)}</b><small>tienes ${S.goods[g.id]}</small></button>`).join('');
   const have = sellable(S);
   const ids = stkApply(BOOKS.filter((b) => ((have.get(b.id)?.shop ?? 0) + (have.get(b.id)?.store ?? 0)) > 0).map((b) => b.id));
   const books = ids.map((id) => `<button type="button" class="wi-it" data-act="winPut" data-uid="${uidv}" data-i="${i}" data-key="b:${id}">${coverSVG(BOOK[id], 40, 60)}<b>${esc(BOOK[id].title)}</b><small>${esc(BOOK[id].author)}</small></button>`).join('');
@@ -2026,8 +2026,8 @@ function encargosHTML() {
 
 function goodRow(g) {
   const lock = !goodUnlocked(S, g), n = goodStock(S, g.id);
-  if (lock) return `<div class="up lock"><span class="gi">${g.emoji}</span><div><b>${g.name}</b><small>Nivel ${g.level}</small></div></div>`;
-  return `<div class="up"><span class="gi" style="${g.color ? `background:${g.color}` : ''}">${g.emoji}</span><div><b>${g.name}</b><small>Coste ${g.cost} € · venta ${g.price} € · tienes ${n}</small></div>
+  if (lock) return `<div class="up lock"><span class="gi">${gicon(g)}</span><div><b>${g.name}</b><small>Nivel ${g.level}</small></div></div>`;
+  return `<div class="up"><span class="gi" style="${g.color && !GOOD_IMG[g.id] ? `background:${g.color}` : ''}">${gicon(g)}</span><div><b>${g.name}</b><small>Coste ${g.cost} € · venta ${g.price} € · tienes ${n}</small></div>
     <button type="button" class="btn small" data-act="buyGood" data-id="${g.id}" data-n="1">+1</button><button type="button" class="btn small primary" data-act="buyGood" data-id="${g.id}" data-n="${g.color ? 2 : 5}">+${g.color ? 2 : 5}</button></div>`;
 }
 function goodsHTML() {
@@ -2316,11 +2316,14 @@ function appResenas() {
 
 const camItemsHTML = () => {
   const have = sellable(S);
-  const goods = ALL_GOODS_LIST().filter((g) => (S.goods?.[g.id] ?? 0) > 0).map((g) => `<button type="button" class="wi-it ${PH.camKey === 'g:' + g.id ? 'sel' : ''}" data-act="camPick" data-key="g:${g.id}"><span class="wi">${g.emoji}</span><b>${esc(g.name)}</b></button>`).join('');
+  const goods = ALL_GOODS_LIST().filter((g) => (S.goods?.[g.id] ?? 0) > 0).map((g) => `<button type="button" class="wi-it ${PH.camKey === 'g:' + g.id ? 'sel' : ''}" data-act="camPick" data-key="g:${g.id}"><span class="wi">${gicon(g)}</span><b>${esc(g.name)}</b></button>`).join('');
   const ids = stkApply(BOOKS.filter((b) => ((have.get(b.id)?.shop ?? 0) + (have.get(b.id)?.store ?? 0)) > 0).map((b) => b.id));
   const books = ids.map((id) => `<button type="button" class="wi-it ${PH.camKey === 'b:' + id ? 'sel' : ''}" data-act="camPick" data-key="b:${id}">${coverSVG(BOOK[id], 36, 54)}<b>${esc(BOOK[id].title)}</b></button>`).join('');
   return goods + books || '<p class="empty">No tienes nada que fotografiar todavía.</p>';
 };
+// Icono de un complemento: su ilustración si la tiene (arte/objetos/recortes), si no el emoji
+const GOOD_IMG = { marcapaginas: 'marcapaginas', libreta: 'libreta', vela: 'vela', tote: 'totebag', poster: 'poster', fig_dragon: 'dragon', fig_gato: 'gato', fig_buho: 'buho', fig_mago: 'maho', er_luma: 'e-reader', er_tinta: 'e-reader', er_pagina: 'e-reader', er_aurora: 'e-reader' };
+const gicon = (g) => (g && GOOD_IMG[g.id] ? `<img class="gimg" src="arte/objetos/recortes/${GOOD_IMG[g.id]}.png" alt="" loading="lazy" draggable="false">` : (g?.emoji ?? '📦'));
 const ALL_GOODS_LIST = () => [...GOODS, ...EREADERS];
 
 function appCamara() {
