@@ -68,6 +68,19 @@ export const SEASON_STORIES = {
     ],
   },
 };
+SEASON_STORIES.nieves = {
+  who: 'nieves', whoName: 'Doña Nieves', title: 'Nieve en la librería',
+  chapters: [
+    { title: 'Una vecina con prisa', goal: 'Atiende a Doña Nieves 2 veces', target: 2, value: (s) => s.stats?.visits?.nieves ?? 0, reward: 60,
+      lines: ['¡Ay, hija, qué frío hace fuera! Aquí se está de maravilla.', 'Soy Nieves, la de la panadería de la esquina. Siempre pasaba de largo, y mira lo que me perdía.', 'Se acerca la Navidad y tengo a toda la familia por regalar. Toma, un dulcito para la caja.'] },
+    { title: 'Regalos para todos', goal: 'Atiende a Doña Nieves 4 veces', target: 4, value: (s) => s.stats?.visits?.nieves ?? 0, reward: 100,
+      lines: ['Mi nieto quiere aventuras, mi cuñada un romance y mi marido… un libro que no le dé sueño.', 'Menos mal que te tengo a ti. Cada año me quedo sin ideas.', 'Y se me ha ocurrido algo: un amigo invisible de libros para todo el barrio.'] },
+    { title: 'El amigo invisible', goal: 'Llega al nivel 8', target: 8, value: (s) => s.level, reward: 150,
+      lines: ['Cuando tu librería sea más grande, lo hacemos aquí. ¡Con papelitos y todo!', 'Ya he hablado con los vecinos: todos quieren venir.', 'Mientras tanto, guarda esto para los gastos del adorno.'] },
+    { title: 'Noche de libros', goal: 'Llega a 200 seguidores', target: 200, value: (s) => s.followers, reward: 300, final: true,
+      lines: ['¡Mira cuánta gente te sigue! Les voy a decir a todos que vengan en Nochebuena.', 'Una librería con luces, nieve en el escaparate y un libro para cada uno. No hay mejor regalo.', 'Gracias por todo, {n}. Feliz Navidad desde la panadería de la esquina.'] },
+  ],
+};
 export const seasonStory = (id) => SEASON_STORIES[id] ?? null;
 export const seasonChapterIdx = (s, id) => (s.seasonStory?.[id]?.chapter ?? 0);
 export const currentSeasonChapter = (s, id) => seasonStory(id)?.chapters[seasonChapterIdx(s, id)] ?? null;

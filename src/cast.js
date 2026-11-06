@@ -233,6 +233,17 @@ export const CAST = [
     voice: { intro: ["Buenas. Vengo de la comisaría, bueno, de jubilado.","Hola. Algo de novela negra, por favor.","Buenos días. Dígame que hay un buen asesino.","Hola, hijo. Busco misterio del de verdad."], yes: ["Eso mismo.","Bien visto.","Así es."], hmm: ["Eso ya lo adiviné.","No, no cuela.","Poco creíble."], like: ["Resolví el caso de","Adiviné al culpable de","Me engañó"], thanks: ["Muy bien, a ver si me engaña.","Gracias, esta noche cae.","Perfecto. Lo termino antes del jueves."], nope: ["Eso ya lo vi venir.","No, ese no."] },
   },
   {
+    id: 'nieves', story: true, name: 'Doña Nieves', age: 'mayor', pref: { infantil: 3, romance: 2.5, humor: 2, historica: 2, literaria: 1.5, epica: 1.5 }, likes: ['vela', 'marcapaginas', 'libreta'],
+    look: { skin: '#e0b090', hair: '#e8e8ea', eyes: '#3a2a1c', style: 'canoso', outfit: 'coat', coat: '#b3262e', scarf: '#2f6b3f', pants: '#3a3340', scale: .96 },
+    voice: {
+      intro: ['¡Ay, qué frío! Buenas, hija.', 'Hola, cariño. Vengo con la lista de regalos.', '¡Feliz Navidad adelantada! ¿Me ayudas?', 'Buenas. Esta vez no me voy sin acertar.'],
+      yes: ['¡Eso, justo eso!', 'Ay, qué bien me conoces.', 'Sí, sí, ese.'], hmm: ['Mmm, a mi nieto no le va.', 'Uy, no sé yo.', 'Ese no, cariño.'],
+      like: ['A mi familia le encantó', 'Regalé', 'Todos hablan de'],
+      thanks: ['¡Perfecto! Te traigo unas rosquillas mañana.', 'Qué envoltorio tan bonito, gracias.', 'Ya tengo un regalo menos, ¡gracias!'],
+      nope: ['Mmm, ese no es para regalar.', 'Ay, no, ese no.'],
+    },
+  },
+  {
     id: 'lia', story: true, name: 'Lía', age: 'joven', pref: { romantasia: 3, romance: 3, epica: 2, scifi: 1.5, humor: 2, literaria: 1.5 }, likes: ['marcapaginas', 'tote', 'vela'],
     look: { skin: '#d9a07a', hair: '#c4344a', eyes: '#3a2418', style: 'largo', lashes: true, earrings: true, outfit: 'coat', coat: '#f2c94c', scarf: '#ffffff', pants: '#2a2a30', acc: 'cámara', scale: 1 },
     voice: {

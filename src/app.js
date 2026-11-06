@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.29.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.30.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -218,7 +218,19 @@ function passArt(pre) {
 }
 
 // Versión apaisada de la misma ilustración para la cabecera del pase
+function xmasBanner() {
+  const flake = (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})" stroke="#fff" stroke-width="1.2" stroke-linecap="round"><path d="M0-6V6M-5.2-3 5.2 3M-5.2 3 5.2-3"/></g>`;
+  return `<svg viewBox="0 0 160 44" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs><linearGradient id="pbx" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f3a2a"/><stop offset=".6" stop-color="#1f6a45"/><stop offset="1" stop-color="#b3262e"/></linearGradient></defs>
+    <rect width="160" height="44" fill="url(#pbx)"/>
+    ${flake(60, 10)}${flake(84, 30, .8)}${flake(102, 12, .7)}${flake(48, 34, .7)}${flake(150, 8, .6)}
+    <g transform="translate(130 26)"><path d="M0-17 12 4H-12z" fill="#2f8a4f" stroke="#0b2a1c" stroke-width="1.4" stroke-linejoin="round"/><path d="M0-9 9 8H-9z" fill="#3aa05f" stroke="#0b2a1c" stroke-width="1.4" stroke-linejoin="round"/><rect x="-2.5" y="8" width="5" height="5" fill="#6a3d22"/><path class="spk" d="M0-21l1.6 3.4 3.4 1.6-3.4 1.6L0-11l-1.6-3.4-3.4-1.6 3.4-1.6z" fill="#ffe27a"/></g>
+    <circle cx="125" cy="22" r="2" fill="#ffd86b"/><circle cx="133" cy="14" r="2" fill="#ff6b6b"/><circle cx="130" cy="31" r="2" fill="#ffd86b"/>
+  </svg>`;
+}
+const nextSeasonId = () => SEASONS[(SEASONS.findIndex((x) => x.id === SEASON.id) + 1) % SEASONS.length].id;
 function passBanner() {
+  if (SEASON.banner === 'NAVIDAD') return xmasBanner();
   const leaf = (x, y, r, c, s = 1) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(${s})"><path d="M0-9c7 3 9 11 0 18-9-7-7-15 0-18z" fill="${c}" stroke="#7a3a20" stroke-width=".9"/><path d="M0-9V9" stroke="#7a3a20" stroke-width=".7"/></g>`;
   return `<svg viewBox="0 0 160 44" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     <defs><linearGradient id="pbn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4a1d2a"/><stop offset=".55" stop-color="#c0442f"/><stop offset="1" stop-color="#f4a24a"/></linearGradient>
@@ -811,9 +823,30 @@ function checkSeason() {
   toast(`¡Empieza la ${SEASON.name}: «${SEASON.title}»!`);
 }
 
+// Recompensa por entrar cada día: ciclo de 7 días (si te saltas un día, sigues donde ibas)
+const DAILY = [{ money: 30 }, { xp: 40 }, { money: 50 }, { xp: 60 }, { money: 80 }, { xp: 100 }, { money: 200, xp: 100 }];
+const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const dailyTxt = (r) => [r.money ? `${r.money} €` : '', r.xp ? `${r.xp} XP` : ''].filter(Boolean).join(' + ');
+async function maybeDaily() {
+  S.daily ??= { last: '', day: 0 };
+  const today = todayKey();
+  if (S.daily.last === today) return;
+  S.daily.last = today; S.daily.day = (S.daily.day % 7) + 1;
+  const day = S.daily.day, rw = DAILY[day - 1];
+  storyBusy = true; busy = true;
+  if (rw.money) S.money = Math.round((S.money + rw.money) * 100) / 100;
+  if (rw.xp) gainXp(S, rw.xp);
+  persist(); renderTop(); sfx('coin');
+  const tiles = DAILY.map((d, i) => `<div class="dy ${i + 1 < day ? 'done' : i + 1 === day ? 'now' : ''}"><small>Día ${i + 1}</small><b>${d.money && d.xp ? '🎁' : d.money ? '🪙' : '⭐'}</b><span>${dailyTxt(d)}</span></div>`).join('');
+  await waitSheet(`${sheetHead('Recompensa de hoy')}<div class="daily"><p>Día ${day} de 7: <b>${dailyTxt(rw)}</b></p><div class="daily-grid">${tiles}</div><p class="muted small">${day === 7 ? 'Has completado la semana. Mañana el ciclo vuelve a empezar.' : 'Vuelve mañana para el siguiente premio.'}</p><button type="button" class="btn primary wide" data-act="close">¡Recoger!</button></div>`);
+  await showLevelUps();
+  storyBusy = false; busy = false; renderPanel();
+}
+
 async function maybeStory() {
   checkSeason();
   if (tutActive() || storyBusy || busy || talking || samirIn || editing || introPending || S.phase !== 'morning' || !layer.hidden || !phoneEl.hidden || !dlg.hidden) return;
+  if (!S.tut || S.tut.i >= TUT.length) { S.daily ??= { last: '', day: 0 }; if (S.daily.last !== todayKey()) { maybeDaily(); return; } }
   let ch = completeChapter(S), who = 'anselmo';
   if (!ch && SEASON.story) { const sc = completeSeasonChapter(S, SEASON.story); if (sc) { ch = sc; who = sc.who; } }
   if (!ch) return;
@@ -975,7 +1008,7 @@ function openPass() {
   openSheet(`<div class="pass-hero">${passBanner()}<div class="ph-t"><small>${SEASON.name}</small><b>${SEASON.banner}</b><span>${SEASON.title}</span></div><button type="button" class="x" data-act="close" aria-label="Cerrar">×</button></div>
     <p class="muted">Ganas puntos vendiendo libros, cerrando el día y completando capítulos. Cada ${SEASON.per} puntos subes un nivel.</p>
     <p class="note">Termina el ${seasonEnd().toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })} · quedan <b>${seasonDaysLeft()}</b> ${seasonDaysLeft() === 1 ? 'día' : 'días'}. Cada mes hay una temporada nueva con su historia.</p>
-    ${S.test ? `<button type="button" class="btn wide" data-act="testSeason">🔄 Probar la ${SEASON.id === '2026-11' ? 'temporada 2 (diciembre)' : 'temporada 1 (noviembre)'}</button>` : '<p class="muted small">¿Quieres ver ya la temporada 2? Activa el «Modo pruebas» en Ajustes (Partida) y aquí aparecerá un botón.</p>'}
+    ${S.test ? `<button type="button" class="btn wide" data-act="testSeason">🔄 Cambiar de temporada (ahora: ${SEASON.name})</button>` : '<p class="muted small">¿Quieres ver ya otra temporada? Activa el «Modo pruebas» en Ajustes (Partida) y aquí aparecerá un botón.</p>'}
     ${S.pass.premium ? '' : `<div class="story-card"><p class="kick">Pase premium ✨</p><p>Desbloquea la pista de la derecha de esta temporada por <b>${SEASON.premiumPrice}</b>. Si entras a mitad de temporada, puedes jugar solo la pista gratis.</p><button type="button" class="btn small primary" data-act="buyPremium">Conseguir el premium</button></div>`}
     <div class="bar"><i style="width:${t >= SEASON.tiers ? 100 : pct}%"></i></div>
     <p class="muted small">Nivel ${t} de ${SEASON.tiers} · ${S.pass.pts} puntos</p>
@@ -2626,7 +2659,7 @@ const act = {
   replayTut: () => { if (S.phase !== 'morning' || busy) { toast('Termina antes la jornada.'); return; } closeSheet(); panelOpen = false; renderPanel(); tutStart(); },
   replayIntro: () => { if (busy || S.phase === 'serving') { toast('Termina antes la jornada.'); return; } closeSheet(); runIntro(false); },
   creatorBack: () => { newFlow = false; introPending = false; world.stopPedestrians(); closeSheet(); document.body.classList.remove('intro'); S = prepare(stored() ?? newGame()); goShop(); showMenu(); },
-  testSeason: () => { S.testSeason = SEASON.id === '2026-11' ? '2026-12' : '2026-11'; checkSeason(); persist(); toast(`Ahora ves la ${SEASON.name}: «${SEASON.title}».`); renderTop(); if ($('.pass-sheet')) openPass(); else if ($('.set-sheet')) openSettings(); },
+  testSeason: () => { S.testSeason = nextSeasonId(); checkSeason(); persist(); toast(`Ahora ves la ${SEASON.name}: «${SEASON.title}».`); renderTop(); if ($('.pass-sheet')) openPass(); else if ($('.set-sheet')) openSettings(); },
   makeVideo: async () => {
     if (busy || !canVideo(S)) return;
     busy = true; vidBtn.hidden = true; panelOpen = false; renderPanel();
@@ -2697,7 +2730,7 @@ const act = {
   passTest: async ({ k }) => {
     if (k === 'p100' || k === 'p500') S.pass.pts = Math.min(SEASON.tiers * SEASON.per, S.pass.pts + (k === 'p100' ? 100 : 500));
     else if (k === 'prem') S.pass.premium = !S.pass.premium;
-    else if (k === 'season') { S.testSeason = SEASON.id === '2026-11' ? '2026-12' : '2026-11'; checkSeason(); }
+    else if (k === 'season') { S.testSeason = nextSeasonId(); checkSeason(); }
     else if (k === 'reset' && await askConfirm('Se reinicia el pase (puntos y premios reclamados). Lo que ya tengas en el inventario se queda.', 'Reiniciar pase', true)) { S.pass = S.passes[SEASON.id] = { pts: 0, free: [], prem: [], premium: SEASON.id === '2026-11', editions: {} }; clearBookCaches(applyEditions(S)); syncWorld(); }
     persist(); renderTop(); openPass(); renderPanel();
   },

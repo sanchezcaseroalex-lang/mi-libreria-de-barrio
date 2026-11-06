@@ -529,3 +529,8 @@ body.intro #openShopBtn, body.inmenu #openShopBtn, body.editing #openShopBtn { d
 #recOv i { font-style: normal; font-size: 64px; }
 @keyframes recblink { 50% { opacity: .2; } }
 .vid-card { text-align: center; } .vid-card b { font: 800 18px var(--serif); } .vid-card .stats { display: flex; justify-content: space-around; margin: 12px 0; } .vid-card .stats div { display: flex; flex-direction: column; } .vid-card .stats b { font-size: 22px; } .vid-card .stats span { color: var(--muted); font-size: 12px; }
+
+.daily { text-align: center; } .daily-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 12px 0; }
+.dy { border: 1px solid var(--line, #d8c8b0); border-radius: 10px; padding: 6px 2px; display: flex; flex-direction: column; align-items: center; gap: 2px; background: rgba(255,255,255,.5); }
+.dy small { font-size: 10px; color: var(--muted); } .dy b { font-size: 20px; } .dy span { font-size: 10px; line-height: 1.1; }
+.dy.done { opacity: .5; } .dy.now { border-color: #d4a017; background: #fff3c4; box-shadow: 0 0 0 2px #d4a01766; }

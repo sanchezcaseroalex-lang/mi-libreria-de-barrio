@@ -21,6 +21,9 @@ export const EDITIONS = {
   dunas: { name: 'Edición Arena Dorada', pal: ['#2a1608', '#8a5a1c', '#ffd27a', '#fff3d2'], edge: '#e0a93b', edgeName: 'ámbar', mult: 1.35 },
   marques: { name: 'Edición Salón de Baile', pal: ['#2a1030', '#6a2a7a', '#f2c9ea', '#ffffff'], edge: '#c070c8', edgeName: 'violeta', mult: 1.35 },
   cipres: { name: 'Edición Jardín Secreto', pal: ['#0a1a14', '#1f4a3a', '#e8d9a0', '#fff6dc'], edge: '#3f8a6a', edgeName: 'verde bosque', mult: 1.35 },
+  hiedra: { name: 'Edición Acebo y Bayas', pal: ['#0c2418', '#1f5a34', '#d63a3a', '#fff1d6'], edge: '#c0392b', edgeName: 'rojo acebo', mult: 1.35 },
+  brasas: { name: 'Edición Chimenea', pal: ['#2a0e06', '#8a2a10', '#ffb347', '#fff0c8'], edge: '#e8742a', edgeName: 'naranja brasa', mult: 1.35 },
+  farola: { name: 'Edición Nochebuena', pal: ['#0a1030', '#1c2f6a', '#ffd86b', '#ffffff'], edge: '#f2c94c', edgeName: 'dorados', mult: 1.35 },
   escarcha: { name: 'Edición Aurora Helada', pal: ['#0d1a2c', '#27506f', '#cfe9f5', '#ffffff'], edge: '#8fd3f0', edgeName: 'azul hielo', mult: 1.35 },
 };
 
@@ -54,6 +57,29 @@ const TIERS_1 = [
   { free: MONEY(200), prem: ED('escarcha') },
 ];
 
+const TIERS_NAV = [
+  { free: MONEY(50), prem: MONEY(120) },
+  { free: XP(30), prem: F('plant', 'blanca') },
+  { free: MONEY(60), prem: F('rug', 'burdeos') },
+  { free: XP(40), prem: XP(80) },
+  { free: F('plant'), prem: F('armchair', 'burdeos') },
+  { free: MONEY(70), prem: ED('hiedra') },
+  { free: XP(50), prem: MONEY(200) },
+  { free: MONEY(80), prem: F('shelf', 'verde') },
+  { free: XP(50), prem: F('plant', 'dorada') },
+  { free: F('rug'), prem: XP(100) },
+  { free: MONEY(90), prem: F('table', 'negra') },
+  { free: XP(60), prem: MONEY(250) },
+  { free: MONEY(100), prem: ED('brasas') },
+  { free: XP(60), prem: F('armchair', 'azul') },
+  { free: F('side'), prem: MONEY(300) },
+  { free: MONEY(110), prem: F('rug', 'azul') },
+  { free: XP(80), prem: XP(150) },
+  { free: MONEY(130), prem: ED('farola') },
+  { free: XP(100), prem: MONEY(350) },
+  { free: MONEY(250), prem: F('plant', 'rosa') },
+];
+
 const TIERS_2 = [
   { free: MONEY(50), prem: MONEY(120) },
   { free: XP(30), prem: F('plant', 'blanca') },
@@ -80,7 +106,8 @@ const TIERS_2 = [
 // Una temporada por mes del calendario real (como en los juegos con pase): su historia, su pista de premios y su pase premium (de pago)
 export const SEASONS = [
   { id: '2026-11', ym: '2026-11', name: 'Temporada 1', title: 'Otoño de tinta', banner: 'OTOÑO', story: null, tiers: TIERS_1, premiumPrice: '4,99 €' },
-  { id: '2026-12', ym: '2026-12', name: 'Temporada 2', title: 'Luces, cámara, libros', banner: 'LUCES', story: 'lia', tiers: TIERS_2, premiumPrice: '4,99 €' },
+  { id: '2026-12', ym: '2026-12', name: 'Temporada 2', title: 'Nieve en la librería', banner: 'NAVIDAD', story: 'nieves', tiers: TIERS_NAV, premiumPrice: '4,99 €' },
+  { id: '2027-01', ym: '2027-01', name: 'Temporada 3', title: 'Luces, cámara, libros', banner: 'LUCES', story: 'lia', tiers: TIERS_2, premiumPrice: '4,99 €' },
 ];
 export const TIERS = [...TIERS_1];
 

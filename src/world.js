@@ -9,6 +9,7 @@ import { makeVan } from './van3d.js';
 import { makePerson, animatePerson, sitPerson, HERO_LOOK } from './people3d.js';
 import { B, ENTRY, DOOR_ROW, FURN, dims, placed, seatCell, seatSpots, doorCell, placementError } from './layout.js';
 import { BOOK, BOOKS, GENRES } from './books.js';
+import { SEASON } from './pass.js';
 
 export const ROT_Y = [0, -Math.PI / 2, Math.PI, Math.PI / 2];
 const WALL_H = 2.7;
@@ -308,7 +309,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
       const m = makePoster(p); m.position.set(lx, p.v, .03); w.decor.add(m);
     }
     // guirnalda de luces
-    if (S.owned?.lights) {
+    if (S.owned?.lights || SEASON.banner === 'NAVIDAD') {
       const pts = []; for (let i = 0; i <= 24; i++) pts.push(new THREE.Vector3(-Wd / 2 + .3 + i * ((Wd - .6) / 24), 2.5 - .16 * Math.sin(i / 24 * Math.PI * Math.max(3, Math.round(Wd / 3))), .06));
       const curve = new THREE.CatmullRomCurve3(pts);
       Wn.decor.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 90, .008, 5), M('#2a1f1a')));
@@ -806,7 +807,7 @@ export function createWorld(canvas, bubblesEl, hooks = {}) {
     sync(state, time) {
       S = state;
       if (time) { timeState = time; applyTime(); }
-      const sk = JSON.stringify([B, S.deco, !!S.owned?.lights, S.shopName, S.doormat]);
+      const sk = JSON.stringify([B, S.deco, !!S.owned?.lights, SEASON.banner === 'NAVIDAD', S.shopName, S.doormat]);
       if (sk !== keys.shell) { keys.shell = sk; buildShell(); keys.furn = ''; }
       const fk = JSON.stringify([S.furniture, S.pass?.editions]);
       if (fk !== keys.furn) { keys.furn = fk; buildFurn(); keys.nook = ''; }

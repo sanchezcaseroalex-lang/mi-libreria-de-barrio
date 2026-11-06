@@ -375,7 +375,7 @@ export function startDay(s) {
   });
   genWebOrders(s);
   genMessages(s);
-  if (SEASON.story === 'lia' && (s.seasonStory?.lia?.chapter ?? 0) < 4 && Math.random() < .7) { const lia = CAST_BY_ID.lia, b = pick(availableBooks(s)); const c = newCustomer(lia, b.id, Math.random() < .5 ? 'tags' : 'genre'); s.queue.splice(Math.floor(Math.random() * (s.queue.length + 1)), 0, c); }
+  if (SEASON.story && CAST_BY_ID[SEASON.story] && (s.seasonStory?.[SEASON.story]?.chapter ?? 0) < 4 && Math.random() < .7) { const lia = CAST_BY_ID[SEASON.story], b = pick(availableBooks(s)); const c = newCustomer(lia, b.id, Math.random() < .5 ? 'tags' : 'genre'); s.queue.splice(Math.floor(Math.random() * (s.queue.length + 1)), 0, c); }
   s.idx = 0;
   s.served = 0;
   s.current = null;
