@@ -6,7 +6,7 @@ let musicOn = false;
 const NOTE = (n) => 440 * 2 ** ((n - 69) / 12);
 
 export function initAudio() {
-  if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+  if (ctx) { if (ctx.state !== 'running') ctx.resume?.(); return; }
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
   ctx = new AC();
@@ -14,6 +14,19 @@ export function initAudio() {
   sfxBus = ctx.createGain(); sfxBus.gain.value = vol.sfx;
   sfxBus.connect(master);
   document.addEventListener('visibilitychange', () => { if (document.hidden) { pauseMusic(); ctx?.suspend(); } else { resumeMusic(); ctx?.resume(); } });
+}
+
+// iPhone/iPad: el sonido solo se desbloquea dentro de un toque COMPLETO (touchend/click, no pointerdown) y el interruptor de silencio
+// apaga el audio web; 'playback' le dice a iOS que esto es contenido que debe sonar aunque esté en silencio.
+let unlocked = false;
+export function unlockAudio() {
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* no disponible */ }
+  initAudio();
+  if (!ctx) return;
+  if (ctx.state !== 'running') ctx.resume?.();
+  if (!unlocked) {
+    try { const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(0); unlocked = true; } catch { /* nada */ }
+  }
 }
 
 export function setVolumes(m, s) {

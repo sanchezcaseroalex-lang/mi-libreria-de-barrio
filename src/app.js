@@ -13,7 +13,7 @@ import {
 import { CAST, genderize, setHeroGender, newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
 import { HERO_LOOK } from './people3d.js';
 import { runOpenBox, runPackBox } from './boxscene.js';
-import { initAudio, setVolumes, sfx, blip, startMusic, isMusicPlaying } from './audio.js';
+import { initAudio, unlockAudio, setVolumes, sfx, blip, startMusic, isMusicPlaying } from './audio.js';
 import { CHAPTERS, ANSELMO_WELCOME, initStory, currentChapter, chapterProgress, completeChapter, grantKeepsakes, SEASON_STORIES, currentSeasonChapter, completeSeasonChapter, seasonChapterIdx } from './story.js';
 import { createWorld, ARTS, POSTER_SIZES, ROT_Y, STORE_INFO } from './world.js';
 import { FLOORS, WALLS, clearBookCaches } from './kit3d.js';
@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.44.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.45.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -2779,7 +2779,7 @@ const act = {
   reset: async () => { if (await askConfirm('Se sustituirá tu librería actual y empezarás de cero con un personaje nuevo.', 'Empezar de cero', true)) { closeSheet(); startNew(); } },
 };
 
-document.addEventListener('pointerdown', () => { initAudio(); applyVolumes(); startMusic(); }, { once: false, capture: true });
+for (const ev of ['pointerdown', 'touchend', 'click']) document.addEventListener(ev, () => { unlockAudio(); applyVolumes(); startMusic(); }, { capture: true, passive: true });
 document.addEventListener('click', (e) => {
   if (e.target.closest('button, [data-act]')) sfx('click');
   const el = e.target.closest('[data-act]');
