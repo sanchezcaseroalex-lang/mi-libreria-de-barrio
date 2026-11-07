@@ -774,7 +774,7 @@ function maybeReview(s, book, stars) {
   return post;
 }
 
-function gainXp(s, amount) {
+export function gainXp(s, amount) {
   s.xp += amount;
   s.today.xp += amount;
   const lv = levelFor(s.xp);

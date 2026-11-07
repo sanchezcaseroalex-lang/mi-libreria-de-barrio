@@ -8,7 +8,7 @@ import {
   newGame, ITEMS, NETWORKS, XP_LEVELS, availableBooks, cozy, storageCount, shelfFree, shelfSlots, containers, furnById,
   inventory, countOf, buyFurniture, placeFurniture, storeFurniture, rotateFurniture, placeBook, takeBack, autoPlace, onDisplay, sellable, buyItem,
   orderBooks, pendingOrders, openShop, offer, dismiss, nextCustomer, nextDay, createAccount, canPost, postPhoto, postVideo,
-  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, canVideo, makeVideo, canGift, giveGift, giftStock, discardFurniture, nudgeFurniture, pruneWindow, setWindow, KEEPSAKES, multiTry, multiSell, windowFilled, windowBoost, WIN_SLOTS, windowOwned, directSale, LOANS, LOAN_LEVEL, loanInfo, takeLoan, repayLoan, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
+  setOnTable, topSellers, claimPass, webTodo, webOrder, webAccept, webReject, canFill, packOrder, samirParcels, deliverOrder, addEncargo, WEB_LEVEL, replyMessage, unreadCount, rentFor, canVideo, makeVideo, canGift, giveGift, giftStock, discardFurniture, nudgeFurniture, pruneWindow, setWindow, KEEPSAKES, multiTry, multiSell, gainXp, windowFilled, windowBoost, WIN_SLOTS, windowOwned, directSale, LOANS, LOAN_LEVEL, loanInfo, takeLoan, repayLoan, sellBundle, openAllBoxes, evaluate, GOODS, EREADERS, GOOD, buyGood, sellGood, upsellFor, goodStock, goodUnlocked, hasStand, FORMAT_DURA, attend as attendC, release as releaseC, ambientCount, crowdCap, openBox, boxBooks, unopenedBooks, buyExpansion, ownsExpansion, setDeco, addPoster, removePoster, posterById, MAX_POSTERS,
 } from './game.js';
 import { CAST, genderize, setHeroGender, newCustomer, ENCARGO_YES, ENCARGO_NO, parcelLines, thanksLine, playerOptions, answer, ambientLook, CAST_LOOKS, CAST_BY_ID, sorryLine, nopeLine, isUnknown, HERO_BASES, HERO_BY_ID, SAMIR, deliveryLines } from './cast.js';
 import { HERO_LOOK } from './people3d.js';
@@ -23,7 +23,7 @@ import { shootItem } from './photo3d.js';
 import { rodeosDataURL } from './rodeos.js';
 import { load, save, wipe } from './store.js';
 
-const BUILD = '0.43.0';   // beta: 0.N.0 (sube N en cada actualización)
+const BUILD = '0.44.0';   // beta: 0.N.0 (sube N en cada actualización)
 console.info('Mi librería · versión', BUILD);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -126,7 +126,7 @@ function openSheet(html, cls = '') {
   layer.innerHTML = `<div class="sheet-bg" data-act="close"></div><div class="sheet ${cls}" role="dialog">${html}</div>`;
   layer.hidden = false;
 }
-function closeSheet() { layer.innerHTML = ''; layer.hidden = true; }
+function closeSheet() { const r = layer._res; layer._res = null; layer.innerHTML = ''; layer.hidden = true; r?.(); }   // si alguien esperaba esta hoja, se le libera: si no, se queda 'busy' para siempre
 const sheetHead = (t) => `<div class="sheet-h"><h2>${t}</h2><button type="button" class="x" data-act="close" aria-label="Cerrar">×</button></div>`;
 const waitSheet = (html, cls) => new Promise((res) => { openSheet(html, cls); layer._res = res; });
 function dismissSheet() { const r = layer._res; layer._res = null; closeSheet(); r?.(); }
@@ -372,16 +372,16 @@ async function heroToShop() {
 async function walkHeroTo(cell) {
   if (!canMove()) return;
   heroBusy = true;
-  await routeTo(world.hero, cell, 3.2);
-  heroBusy = false;
+  try { await routeTo(world.hero, cell, 3.2); } finally { heroBusy = false; }
 }
 async function doorTap(to) {
   if (!canMove()) return;
   heroBusy = true;
   panelOpen = false; renderPanel();
-  if (to === 'store' && world.view === 'shop') await heroToStore();
-  else if (to === 'shop' && world.view === 'store') await heroToShop();
-  heroBusy = false;
+  try {
+    if (to === 'store' && world.view === 'shop') await heroToStore();
+    else if (to === 'shop' && world.view === 'store') await heroToShop();
+  } catch (err) { console.error(err); wipeEl.classList.remove('on'); world.hero.visible = true; } finally { heroBusy = false; }
 }
 async function boxTap(id) {
   if (!canMove()) return;
@@ -390,17 +390,14 @@ async function boxTap(id) {
   const [bx, bz] = STO.boxSlots[i];
   const near = storeNear([Math.floor(bx), Math.floor(bz)]);
   heroBusy = true;
-  if (near) { await routeTo(world.hero, near, 3.2); world.face(world.hero, bx - world.hero.position.x, bz - world.hero.position.z); }
-  heroBusy = false;
+  try { if (near) { await routeTo(world.hero, near, 3.2); world.face(world.hero, bx - world.hero.position.x, bz - world.hero.position.z); } } catch (err) { console.error(err); } finally { heroBusy = false; }
   openBoxGame(id);
 }
 async function shelfTap(idx) {
   if (!canMove()) return;
   const front = STO.shelfFront[idx] ?? STO.shelfFront[0];
   heroBusy = true;
-  await routeTo(world.hero, front, 3.2);
-  world.face(world.hero, 0, -1);
-  heroBusy = false;
+  try { await routeTo(world.hero, front, 3.2); world.face(world.hero, 0, -1); } catch (err) { console.error(err); } finally { heroBusy = false; }
   tab = 'stock'; panelOpen = true; renderPanel();
 }
 
@@ -844,18 +841,19 @@ async function maybeDaily() {
   S.daily.last = today; S.daily.day = streak ? (S.daily.day % 7) + 1 : 1;
   const day = S.daily.day, rw = DAILY[day - 1];
   storyBusy = true; busy = true;
+  try {
   if (rw.money) S.money = Math.round((S.money + rw.money) * 100) / 100;
   if (rw.xp) gainXp(S, rw.xp);
   persist(); renderTop(); sfx('coin');
   const tiles = DAILY.map((d, i) => `<div class="dy ${i + 1 < day ? 'done' : i + 1 === day ? 'now' : ''}"><small>Día ${i + 1}</small><b>${d.money && d.xp ? '🎁' : d.money ? '🪙' : '⭐'}</b><span>${dailyTxt(d)}</span></div>`).join('');
   await waitSheet(`${sheetHead('Recompensa de hoy')}<div class="daily"><p>Día ${day} de 7: <b>${dailyTxt(rw)}</b></p><div class="daily-grid">${tiles}</div><p class="muted small">${day === 7 ? 'Has completado la semana. Mañana el ciclo vuelve a empezar.' : 'Vuelve mañana para el siguiente premio.'}</p><button type="button" class="btn primary wide" data-act="close">¡Recoger!</button></div>`);
   await showLevelUps();
-  storyBusy = false; busy = false; renderPanel();
+  } catch (err) { console.error(err); closeSheet(); } finally { storyBusy = false; busy = false; renderPanel(); }
 }
 
 async function maybeStory() {
   checkSeason();
-  if (tutActive() || storyBusy || busy || talking || samirIn || editing || introPending || S.phase !== 'morning' || !layer.hidden || !phoneEl.hidden || !dlg.hidden) return;
+  if (tutActive() || storyBusy || busy || talking || samirIn || editing || introPending || !menuEl.hidden || S.phase !== 'morning' || !layer.hidden || !phoneEl.hidden || !dlg.hidden) return;
   if (!S.tut || S.tut.i >= TUT.length) { S.daily ??= { last: '', day: 0 }; if (S.daily.last !== todayKey()) { maybeDaily(); return; } }
   let ch = completeChapter(S), who = 'anselmo';
   if (!ch && SEASON.story) { const sc = completeSeasonChapter(S, SEASON.story); if (sc) { ch = sc; who = sc.who; } }
@@ -926,8 +924,9 @@ function deliveryContext() {
 
 async function maybeDelivery() {
   const parcels = samirParcels(S);
-  if (tutActive() || samirIn || busy || editing || S.phase !== 'morning' || !(S.arrived?.length || parcels.length) || S.samirDay === S.day) return;
+  if (tutActive() || samirIn || busy || editing || introPending || talking || !menuEl.hidden || !layer.hidden || !phoneEl.hidden || !dlg.hidden || panelOpen || S.phase !== 'morning' || !(S.arrived?.length || parcels.length) || S.samirDay === S.day) return;
   samirIn = true; busy = true;
+  try {
   S.samirDay = S.day; persist();
   panelOpen = false; renderPanel();
   if (world.view !== 'shop') { world.setView('shop'); syncWorld(); placeHero(); }
@@ -955,8 +954,8 @@ async function maybeDelivery() {
   closeDialog();
   if (parcels.length) { const total = parcels.reduce((t, o) => t + deliverOrder(S, o), 0); persist(); renderTop(); toast(`Rodeos Express se lleva ${parcels.length === 1 ? 'el paquete' : 'los paquetes'}: +${total} €`); }
   await exitShop(e);   // el repartidor sale por la puerta y se acabó: sin escena de la furgoneta yéndose
-  samirIn = false; busy = false;
-  renderPanel();
+  } catch (err) { console.error(err); closeDialog(); document.body.classList.remove('intro'); wipeEl.classList.remove('on'); }
+  finally { samirIn = false; busy = false; renderPanel(); }
 }
 
 /* ---------- Atender al cliente del mostrador ---------- */
@@ -1986,8 +1985,8 @@ async function openBoxGame(id) {
   if (!box || busy) return;
   panelOpen = false; renderPanel(); busy = true;
   const items = box.items.flatMap((it) => Array.from({ length: it.qty }, () => it.id));
-  const ok = await runOpenBox({ items, hard: S.settings.hard, buzz, others: S.boxes.length - 1 });
-  busy = false;
+  let ok = false;
+  try { ok = await runOpenBox({ items, hard: S.settings.hard, buzz, others: S.boxes.length - 1 }); } catch (err) { console.error(err); } finally { busy = false; }
   if (!ok) { renderPanel(); return; }
   if (ok === 'all') { const n = openAllBoxes(S); persist(); syncWorld(); renderPanel(); renderTop(); toast(`${n} libros guardados en el almacén. Puedes exponer uno de cada título.`); return; }
   const b = openBox(S, id);
@@ -2854,12 +2853,12 @@ function updateOpenBtn() {
 setInterval(updateOpenBtn, 350);
 let doorWas = false;
 setInterval(() => { const o = S.phase === 'serving' || crowd.size > 0 || samirIn; world.setDoorsOpen(o); if (o && !doorWas) sfx('bell'); doorWas = o; }, 800);
-setTimeout(maybeDelivery, 1500);
+setInterval(maybeDelivery, 2000);   // reintenta mientras haya menú, panel o diálogo abierto: no arranca detrás del menú de inicio
 setInterval(maybeStory, 2500);
 if (S.hero) applyHero();
 window.Loading?.set(0.9);
 showMenu();
 window.Loading?.hide();
 if (S.phase === 'serving') { S.phase = 'morning'; S.current = null; S.served = 0; persist(); }
-window.__lib = { get S() { return S; }, askEdition, act, world, walkHeroTo, maybeDelivery, showLevelUps, renderPanel, syncWorld, openPhone, renderPhone, PH };
+window.__lib = { dbg: () => ({ busy, talking, editing, introPending, samirIn, panelOpen, tut: tutActive() }), get S() { return S; }, askEdition, act, world, walkHeroTo, maybeDelivery, showLevelUps, renderPanel, syncWorld, openPhone, renderPhone, PH };
 void T; void cellsOf; void ROT_Y;
